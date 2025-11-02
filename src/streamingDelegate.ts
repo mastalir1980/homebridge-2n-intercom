@@ -160,10 +160,10 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   }
 
   /**
-   * Generate a random SSRC value for RTP streams
+   * Generate a random SSRC value for RTP streams (32-bit unsigned integer)
    */
   private generateSSRC(): number {
-    return Math.floor(Math.random() * 0xFFFFFFFF);
+    return Math.floor(Math.random() * 0x100000000);
   }
 
   handleStreamRequest(request: StreamingRequest, callback: StreamRequestCallback): void {
@@ -171,10 +171,11 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
 
     switch (request.type) {
       case StreamRequestTypes.START:
-        // Note: This implementation provides the RTSP URL to HomeKit, which handles the actual
-        // streaming. For more advanced scenarios, you could use ffmpeg to transcode the stream,
-        // but for basic RTSP streaming from 2N intercoms, HomeKit's native support is sufficient.
-        this.log.info('Starting video stream from RTSP URL:', this.streamUrl);
+        // Note: This is a basic implementation that tracks streaming sessions.
+        // For actual RTSP streaming, the streamUrl should be provided directly to HomeKit clients,
+        // or you can use ffmpeg to transcode and relay the stream to the client's address and port.
+        // Many 2N intercoms work with direct RTSP URLs in HomeKit-compatible camera apps.
+        this.log.info('Stream session started for RTSP URL:', this.streamUrl);
         const sessionInfo = this.pendingSessions.get(sessionId);
         if (sessionInfo) {
           this.ongoingSessions.set(sessionId, true);
