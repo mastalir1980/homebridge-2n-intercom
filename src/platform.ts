@@ -28,25 +28,25 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     public readonly config: PlatformConfig & TwoNIntercomConfig,
     public readonly api: API,
   ) {
-    this.log.debug('Finished initializing platform (MVP version):', this.config.name);
+    this.log.debug('Finished initializing platform:', this.config.name);
 
-    // MVP: Validate minimal required configuration
+    // Validate required configuration
     if (!this.config.host || !this.config.user || !this.config.pass) {
-      this.log.error('MVP: Missing required configuration: host, user, pass');
+      this.log.error('Missing required configuration: host, user, pass');
       return;
     }
 
     if (!this.config.doorOpenUrl) {
-      this.log.error('MVP: Missing required configuration: doorOpenUrl');
+      this.log.error('Missing required configuration: doorOpenUrl');
       return;
     }
 
-    /* MVP: Future features validation commented out
     if (!this.config.snapshotUrl || !this.config.streamUrl) {
       this.log.error('Missing required configuration: snapshotUrl, streamUrl');
       return;
     }
 
+    /* Future features validation commented out
     if (!this.config.doorStatusUrl) {
       this.log.error('Missing required configuration: doorStatusUrl');
       return;
@@ -101,16 +101,16 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
       // create a new accessory
       const accessory = new this.api.platformAccessory(this.config.name || '2N Intercom', uuid);
 
-      // MVP: Store minimal device configuration
+      // Store device configuration
       accessory.context.device = {
         host: this.config.host,
         user: this.config.user,
         pass: this.config.pass,
         doorOpenUrl: this.config.doorOpenUrl,
         switchDuration: this.config.switchDuration || 1000,
+        snapshotUrl: this.config.snapshotUrl,
+        streamUrl: this.config.streamUrl,
         // Future features
-        // snapshotUrl: this.config.snapshotUrl,
-        // streamUrl: this.config.streamUrl,
         // doorStatusUrl: this.config.doorStatusUrl,
         // pollInterval: this.config.pollInterval || 5000,
       };

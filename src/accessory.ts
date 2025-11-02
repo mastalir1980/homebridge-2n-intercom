@@ -1,20 +1,20 @@
 import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
 import axios from 'axios';
 import { TwoNIntercomPlatform } from './platform';
-// import { TwoNStreamingDelegate } from './streamingDelegate'; // MVP: Camera streaming disabled
+import { TwoNStreamingDelegate } from './streamingDelegate';
 
 /**
- * Platform Accessory (MVP version - door unlock switch only)
+ * Platform Accessory - door unlock switch and camera
  * An instance of this class is created for each accessory your platform registers
  */
 export class TwoNIntercomAccessory {
-  // MVP: Only switch service for door unlock
+  // Active features
   private switchService: Service;
+  private streamingDelegate: TwoNStreamingDelegate;
 
-  // Future features (commented out for MVP)
+  // Future features (commented out)
   // private doorbellService: Service;
   // private contactSensorService: Service;
-  // private streamingDelegate: TwoNStreamingDelegate;
   // private doorState: CharacteristicValue = this.platform.Characteristic.ContactSensorState.CONTACT_DETECTED;
   // private pollInterval: NodeJS.Timeout | null = null;
 
@@ -25,10 +25,10 @@ export class TwoNIntercomAccessory {
     // Set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, '2N')
-      .setCharacteristic(this.platform.Characteristic.Model, 'Intercom MVP')
+      .setCharacteristic(this.platform.Characteristic.Model, 'Intercom')
       .setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.device.host);
 
-    // MVP: Create Switch service for door unlock
+    // Create Switch service for door unlock
     this.switchService = this.accessory.getService(this.platform.Service.Switch) ||
       this.accessory.addService(this.platform.Service.Switch, 'Door Unlock');
 
@@ -38,25 +38,7 @@ export class TwoNIntercomAccessory {
       .onGet(this.handleSwitchOnGet.bind(this))
       .onSet(this.handleSwitchOnSet.bind(this));
 
-    // Future features (commented out for MVP)
-    
-    /* MVP: Doorbell service disabled
-    this.doorbellService = this.accessory.getService(this.platform.Service.Doorbell) ||
-      this.accessory.addService(this.platform.Service.Doorbell);
-    this.doorbellService.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName);
-    this.doorbellService.getCharacteristic(this.platform.Characteristic.ProgrammableSwitchEvent)
-      .onGet(this.handleProgrammableSwitchEventGet.bind(this));
-    */
-
-    /* MVP: Contact Sensor service disabled
-    this.contactSensorService = this.accessory.getService(this.platform.Service.ContactSensor) ||
-      this.accessory.addService(this.platform.Service.ContactSensor, 'Door Status');
-    this.contactSensorService.setCharacteristic(this.platform.Characteristic.Name, 'Door Status');
-    this.contactSensorService.getCharacteristic(this.platform.Characteristic.ContactSensorState)
-      .onGet(this.handleContactSensorStateGet.bind(this));
-    */
-
-    /* MVP: Camera streaming disabled
+    // Setup camera streaming
     this.streamingDelegate = new TwoNStreamingDelegate(
       this.platform.api.hap,
       this.platform.log,
@@ -65,11 +47,30 @@ export class TwoNIntercomAccessory {
       accessory.context.device.user,
       accessory.context.device.pass,
     );
+
+    // Configure camera controller
     const cameraController = this.streamingDelegate.getController();
     this.accessory.configureController(cameraController);
+
+    // Future features (commented out)
+    
+    /* Doorbell service disabled
+    this.doorbellService = this.accessory.getService(this.platform.Service.Doorbell) ||
+      this.accessory.addService(this.platform.Service.Doorbell);
+    this.doorbellService.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName);
+    this.doorbellService.getCharacteristic(this.platform.Characteristic.ProgrammableSwitchEvent)
+      .onGet(this.handleProgrammableSwitchEventGet.bind(this));
     */
 
-    /* MVP: Door status polling disabled
+    /* Contact Sensor service disabled
+    this.contactSensorService = this.accessory.getService(this.platform.Service.ContactSensor) ||
+      this.accessory.addService(this.platform.Service.ContactSensor, 'Door Status');
+    this.contactSensorService.setCharacteristic(this.platform.Characteristic.Name, 'Door Status');
+    this.contactSensorService.getCharacteristic(this.platform.Characteristic.ContactSensorState)
+      .onGet(this.handleContactSensorStateGet.bind(this));
+    */
+
+    /* Door status polling disabled
     this.startPolling();
     */
   }

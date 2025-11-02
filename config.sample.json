@@ -5,7 +5,7 @@
     "port": 51826,
     "pin": "031-45-154"
   },
-  "description": "Sample configuration for Homebridge with 2N Intercom plugin (MVP version)",
+  "description": "Sample configuration for Homebridge with 2N Intercom plugin",
   "platforms": [
     {
       "platform": "2NIntercom",
@@ -14,9 +14,11 @@
       "user": "admin",
       "pass": "password",
       "doorOpenUrl": "http://192.168.1.100/api/switch/ctrl?switch=1&action=trigger",
-      "switchDuration": 1000
+      "switchDuration": 1000,
+      "snapshotUrl": "http://192.168.1.100/api/camera/snapshot",
+      "streamUrl": "rtsp://192.168.1.100:554/h264_stream"
     }
   ],
   "accessories": [],
-  "_comment": "MVP version - only door unlock switch is active. Future features (camera, doorbell, door status) are commented out in code."
+  "_comment": "Active features: door unlock switch and camera with video streaming. Future features (doorbell, door status) are commented out in code."
 }
