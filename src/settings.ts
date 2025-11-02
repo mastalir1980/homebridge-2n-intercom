@@ -9,7 +9,7 @@ export const PLATFORM_NAME = '2NIntercom';
 export const PLUGIN_NAME = 'homebridge-2n-intercom';
 
 /**
- * Configuration interface for the 2N Intercom plugin
+ * Configuration interface for the 2N Intercom plugin (MVP version)
  */
 export interface TwoNIntercomConfig {
   platform: string;
@@ -17,9 +17,12 @@ export interface TwoNIntercomConfig {
   host: string;
   user: string;
   pass: string;
-  snapshotUrl: string;
-  streamUrl: string;
   doorOpenUrl: string;
-  doorStatusUrl: string;
-  pollInterval?: number; // in milliseconds, defaults to 5000
+  switchDuration?: number; // Duration in milliseconds that switch stays on, defaults to 1000
+  // Camera and streaming features (future)
+  // snapshotUrl?: string;
+  // streamUrl?: string;
+  // Door status polling (future)
+  // doorStatusUrl?: string;
+  // pollInterval?: number;
 }

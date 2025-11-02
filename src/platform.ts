@@ -28,23 +28,30 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     public readonly config: PlatformConfig & TwoNIntercomConfig,
     public readonly api: API,
   ) {
-    this.log.debug('Finished initializing platform:', this.config.name);
+    this.log.debug('Finished initializing platform (MVP version):', this.config.name);
 
-    // Validate configuration
+    // MVP: Validate minimal required configuration
     if (!this.config.host || !this.config.user || !this.config.pass) {
-      this.log.error('Missing required configuration: host, user, pass');
+      this.log.error('MVP: Missing required configuration: host, user, pass');
       return;
     }
 
+    if (!this.config.doorOpenUrl) {
+      this.log.error('MVP: Missing required configuration: doorOpenUrl');
+      return;
+    }
+
+    /* MVP: Future features validation commented out
     if (!this.config.snapshotUrl || !this.config.streamUrl) {
       this.log.error('Missing required configuration: snapshotUrl, streamUrl');
       return;
     }
 
-    if (!this.config.doorOpenUrl || !this.config.doorStatusUrl) {
-      this.log.error('Missing required configuration: doorOpenUrl, doorStatusUrl');
+    if (!this.config.doorStatusUrl) {
+      this.log.error('Missing required configuration: doorStatusUrl');
       return;
     }
+    */
 
     // When this event is fired it means Homebridge has restored all cached accessories from disk.
     // Dynamic Platform plugins should only register new accessories after this event was fired,
@@ -94,16 +101,18 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
       // create a new accessory
       const accessory = new this.api.platformAccessory(this.config.name || '2N Intercom', uuid);
 
-      // store a copy of the device object in the `accessory.context`
+      // MVP: Store minimal device configuration
       accessory.context.device = {
         host: this.config.host,
         user: this.config.user,
         pass: this.config.pass,
-        snapshotUrl: this.config.snapshotUrl,
-        streamUrl: this.config.streamUrl,
         doorOpenUrl: this.config.doorOpenUrl,
-        doorStatusUrl: this.config.doorStatusUrl,
-        pollInterval: this.config.pollInterval || 5000,
+        switchDuration: this.config.switchDuration || 1000,
+        // Future features
+        // snapshotUrl: this.config.snapshotUrl,
+        // streamUrl: this.config.streamUrl,
+        // doorStatusUrl: this.config.doorStatusUrl,
+        // pollInterval: this.config.pollInterval || 5000,
       };
 
       // create the accessory handler for the newly create accessory

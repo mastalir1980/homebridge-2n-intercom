@@ -1,10 +1,14 @@
 # homebridge-2n-intercom
 
-Homebridge plugin for 2N intercoms that provides:
+## MVP Version (Minimum Viable Product)
+
+This is a simplified version of the Homebridge plugin for 2N intercoms that provides:
+- **Door unlock control via HTTP switch** (currently active)
+
+Future features (commented out in code):
 - Camera accessory with snapshot support
 - RTSP video streaming
 - Doorbell events
-- Door unlock control via HTTP
 - Door status monitoring via contact sensor (with polling)
 
 ## Installation
@@ -26,50 +30,43 @@ Add the following configuration to your Homebridge `config.json`:
       "host": "192.168.1.100",
       "user": "admin",
       "pass": "password",
-      "snapshotUrl": "http://192.168.1.100/api/camera/snapshot",
-      "streamUrl": "rtsp://192.168.1.100:554/h264_stream",
       "doorOpenUrl": "http://192.168.1.100/api/switch/ctrl?switch=1&action=trigger",
-      "doorStatusUrl": "http://192.168.1.100/api/io/status",
-      "pollInterval": 5000
+      "switchDuration": 1000
     }
   ]
 }
 ```
 
-### Configuration Parameters
+### Configuration Parameters (MVP)
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
 | `platform` | Yes | Must be `2NIntercom` |
 | `name` | No | Display name for the accessory (default: "2N Intercom") |
 | `host` | Yes | IP address or hostname of the 2N intercom |
-| `user` | Yes | Username for authentication |
-| `pass` | Yes | Password for authentication |
-| `snapshotUrl` | Yes | HTTP URL to fetch camera snapshot |
-| `streamUrl` | Yes | RTSP URL for video streaming |
+| `user` | Yes | Username for HTTP authentication |
+| `pass` | Yes | Password for HTTP authentication |
 | `doorOpenUrl` | Yes | HTTP URL to trigger door unlock |
-| `doorStatusUrl` | Yes | HTTP URL to check door status |
-| `pollInterval` | No | Polling interval in milliseconds for door status (default: 5000) |
+| `switchDuration` | No | Duration in milliseconds that switch stays on (default: 1000) |
 
-## Features
+#### Future Parameters (not yet active)
+- `snapshotUrl` - HTTP URL to fetch camera snapshot
+- `streamUrl` - RTSP URL for video streaming
+- `doorStatusUrl` - HTTP URL to check door status
+- `pollInterval` - Polling interval in milliseconds for door status
 
-### Camera
-- Displays the 2N intercom as a HomeKit camera
-- Supports snapshot capture
-- RTSP video streaming
+## Features (MVP)
 
-### Doorbell
-- Triggers doorbell events in HomeKit
-- Can be used to send notifications
+### Door Control ✓ Active
+- Switch accessory to unlock the door via HTTP
+- Switch activates for configured duration (`switchDuration`)
+- Automatically turns off after the specified time
+- Uses official 2N HTTP API endpoint
 
-### Door Control
-- Switch accessory to unlock the door
-- Automatically resets after unlocking
-
-### Door Status
-- Contact sensor shows whether the door is open or closed
-- Polls the status at the configured interval
-- Updates automatically when the state changes
+### Future Features (Commented out in code)
+- **Camera**: Snapshot capture and RTSP video streaming
+- **Doorbell**: Programmable switch events for doorbell notifications
+- **Door Status**: Contact sensor with polling to monitor door open/closed state
 
 ## 2N API Endpoints
 

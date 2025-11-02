@@ -1,21 +1,22 @@
 import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
 import axios from 'axios';
 import { TwoNIntercomPlatform } from './platform';
-import { TwoNStreamingDelegate } from './streamingDelegate';
+// import { TwoNStreamingDelegate } from './streamingDelegate'; // MVP: Camera streaming disabled
 
 /**
- * Platform Accessory
+ * Platform Accessory (MVP version - door unlock switch only)
  * An instance of this class is created for each accessory your platform registers
- * Each accessory may expose multiple services of different service types.
  */
 export class TwoNIntercomAccessory {
-  private doorbellService: Service;
-  private contactSensorService: Service;
+  // MVP: Only switch service for door unlock
   private switchService: Service;
-  private streamingDelegate: TwoNStreamingDelegate;
 
-  private doorState: CharacteristicValue = this.platform.Characteristic.ContactSensorState.CONTACT_DETECTED;
-  private pollInterval: NodeJS.Timeout | null = null;
+  // Future features (commented out for MVP)
+  // private doorbellService: Service;
+  // private contactSensorService: Service;
+  // private streamingDelegate: TwoNStreamingDelegate;
+  // private doorState: CharacteristicValue = this.platform.Characteristic.ContactSensorState.CONTACT_DETECTED;
+  // private pollInterval: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly platform: TwoNIntercomPlatform,
@@ -24,29 +25,10 @@ export class TwoNIntercomAccessory {
     // Set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, '2N')
-      .setCharacteristic(this.platform.Characteristic.Model, 'Intercom')
+      .setCharacteristic(this.platform.Characteristic.Model, 'Intercom MVP')
       .setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.device.host);
 
-    // Create Doorbell service
-    this.doorbellService = this.accessory.getService(this.platform.Service.Doorbell) ||
-      this.accessory.addService(this.platform.Service.Doorbell);
-
-    this.doorbellService.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName);
-
-    // The doorbell can be triggered programmatically
-    this.doorbellService.getCharacteristic(this.platform.Characteristic.ProgrammableSwitchEvent)
-      .onGet(this.handleProgrammableSwitchEventGet.bind(this));
-
-    // Create Contact Sensor service for door status
-    this.contactSensorService = this.accessory.getService(this.platform.Service.ContactSensor) ||
-      this.accessory.addService(this.platform.Service.ContactSensor, 'Door Status');
-
-    this.contactSensorService.setCharacteristic(this.platform.Characteristic.Name, 'Door Status');
-
-    this.contactSensorService.getCharacteristic(this.platform.Characteristic.ContactSensorState)
-      .onGet(this.handleContactSensorStateGet.bind(this));
-
-    // Create Switch service for door unlock
+    // MVP: Create Switch service for door unlock
     this.switchService = this.accessory.getService(this.platform.Service.Switch) ||
       this.accessory.addService(this.platform.Service.Switch, 'Door Unlock');
 
@@ -56,7 +38,25 @@ export class TwoNIntercomAccessory {
       .onGet(this.handleSwitchOnGet.bind(this))
       .onSet(this.handleSwitchOnSet.bind(this));
 
-    // Setup camera streaming
+    // Future features (commented out for MVP)
+    
+    /* MVP: Doorbell service disabled
+    this.doorbellService = this.accessory.getService(this.platform.Service.Doorbell) ||
+      this.accessory.addService(this.platform.Service.Doorbell);
+    this.doorbellService.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName);
+    this.doorbellService.getCharacteristic(this.platform.Characteristic.ProgrammableSwitchEvent)
+      .onGet(this.handleProgrammableSwitchEventGet.bind(this));
+    */
+
+    /* MVP: Contact Sensor service disabled
+    this.contactSensorService = this.accessory.getService(this.platform.Service.ContactSensor) ||
+      this.accessory.addService(this.platform.Service.ContactSensor, 'Door Status');
+    this.contactSensorService.setCharacteristic(this.platform.Characteristic.Name, 'Door Status');
+    this.contactSensorService.getCharacteristic(this.platform.Characteristic.ContactSensorState)
+      .onGet(this.handleContactSensorStateGet.bind(this));
+    */
+
+    /* MVP: Camera streaming disabled
     this.streamingDelegate = new TwoNStreamingDelegate(
       this.platform.api.hap,
       this.platform.log,
@@ -65,30 +65,26 @@ export class TwoNIntercomAccessory {
       accessory.context.device.user,
       accessory.context.device.pass,
     );
-
-    // Configure camera controller
     const cameraController = this.streamingDelegate.getController();
     this.accessory.configureController(cameraController);
+    */
 
-    // Start polling for door status
+    /* MVP: Door status polling disabled
     this.startPolling();
+    */
   }
 
-  /**
-   * Handle requests to get the current value of the "Programmable Switch Event" characteristic
-   */
+  /* MVP: Future features commented out
   handleProgrammableSwitchEventGet(): CharacteristicValue {
     this.platform.log.debug('Triggered GET ProgrammableSwitchEvent');
     return this.platform.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS;
   }
 
-  /**
-   * Handle requests to get the current value of the "Contact Sensor State" characteristic
-   */
   handleContactSensorStateGet(): CharacteristicValue {
     this.platform.log.debug('Triggered GET ContactSensorState:', this.doorState);
     return this.doorState;
   }
+  */
 
   /**
    * Handle requests to get the current value of the "On" characteristic (for door unlock switch)
@@ -100,6 +96,7 @@ export class TwoNIntercomAccessory {
 
   /**
    * Handle requests to set the "On" characteristic (for door unlock)
+   * MVP: Switch activates for configured duration then automatically turns off
    */
   async handleSwitchOnSet(value: CharacteristicValue) {
     this.platform.log.debug('Triggered SET On:', value);
@@ -108,10 +105,14 @@ export class TwoNIntercomAccessory {
       try {
         await this.unlockDoor();
         
-        // Automatically turn off the switch after a short delay
+        // Automatically turn off the switch after configured duration
+        const switchDuration = this.accessory.context.device.switchDuration || 1000;
+        this.platform.log.info(`Switch will turn off after ${switchDuration}ms`);
+        
         setTimeout(() => {
           this.switchService.updateCharacteristic(this.platform.Characteristic.On, false);
-        }, 1000);
+          this.platform.log.info('Switch turned off');
+        }, switchDuration);
       } catch (error) {
         this.platform.log.error('Error unlocking door:', error);
         throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
@@ -120,7 +121,7 @@ export class TwoNIntercomAccessory {
   }
 
   /**
-   * Unlock the door by calling the configured URL
+   * MVP: Unlock the door by calling the configured URL
    */
   async unlockDoor(): Promise<void> {
     try {
@@ -141,9 +142,8 @@ export class TwoNIntercomAccessory {
     }
   }
 
-  /**
-   * Poll the door status from the configured URL
-   */
+  /* MVP: Future features commented out
+  
   async pollDoorStatus(): Promise<void> {
     try {
       const response = await axios.get(this.accessory.context.device.doorStatusUrl, {
@@ -155,20 +155,12 @@ export class TwoNIntercomAccessory {
       });
 
       // Parse the door status response
-      // The 2N API /api/io/status returns JSON with inputs and outputs arrays:
-      // { "inputs": [{ "id": 0, "name": "DoorSensor", "value": 1 }], "outputs": [...] }
-      // Where value: 1 = active/open, value: 0 = inactive/closed
-      // This also supports other custom response formats for flexibility
       let isOpen = false;
       
       if (typeof response.data === 'object' && response.data !== null) {
-        // Official 2N API format with inputs array
         if (Array.isArray(response.data.inputs) && response.data.inputs.length > 0) {
-          // Use the first input's value (1 = open, 0 = closed)
-          // You can modify this to check a specific input by id or name
           isOpen = response.data.inputs[0].value === 1;
         } 
-        // Fallback: Try common property names for custom/alternative APIs
         else if (response.data.open !== undefined || response.data.isOpen !== undefined || 
                  response.data.state !== undefined || response.data.status !== undefined) {
           isOpen = response.data.open || response.data.isOpen || 
@@ -197,25 +189,15 @@ export class TwoNIntercomAccessory {
     }
   }
 
-  /**
-   * Start polling for door status at the configured interval
-   */
   startPolling(): void {
     const pollInterval = this.accessory.context.device.pollInterval || 5000;
     this.platform.log.info('Starting door status polling every', pollInterval, 'ms');
-
-    // Poll immediately
     this.pollDoorStatus();
-
-    // Then poll at the configured interval
     this.pollInterval = setInterval(() => {
       this.pollDoorStatus();
     }, pollInterval);
   }
 
-  /**
-   * Trigger doorbell event (can be called externally if needed)
-   */
   triggerDoorbellEvent(): void {
     this.platform.log.info('Doorbell triggered');
     this.doorbellService.updateCharacteristic(
@@ -223,4 +205,5 @@ export class TwoNIntercomAccessory {
       this.platform.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS,
     );
   }
+  */
 }
