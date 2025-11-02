@@ -155,8 +155,11 @@ export class TwoNIntercomAccessory {
       });
 
       // Parse the door status response
-      // Assuming the response contains a boolean or a status string
-      // This can be adapted based on the actual 2N API response format
+      // The 2N API may return different formats depending on the model and configuration:
+      // - Object with properties: { open: true/false } or { state: "open"/"closed" }
+      // - String: "open" or "closed"
+      // - Boolean: true (open) or false (closed)
+      // Users may need to customize this logic based on their specific 2N intercom API
       let isOpen = false;
       
       if (typeof response.data === 'object' && response.data !== null) {

@@ -123,17 +123,21 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     const sessionId = request.sessionID;
     const targetAddress = request.targetAddress;
 
+    // Generate unique SSRC values for each session
+    const videoSSRC = this.generateSSRC();
+    const audioSSRC = this.generateSSRC();
+
     const response: PrepareStreamResponse = {
       address: targetAddress,
       video: {
         port: request.video.port,
-        ssrc: 1,
+        ssrc: videoSSRC,
         srtp_key: request.video.srtp_key,
         srtp_salt: request.video.srtp_salt,
       },
       audio: {
         port: request.audio.port,
-        ssrc: 1,
+        ssrc: audioSSRC,
         srtp_key: request.audio.srtp_key,
         srtp_salt: request.audio.srtp_salt,
       },
@@ -144,15 +148,22 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       videoPort: request.video.port,
       videoCryptoSuite: request.video.srtpCryptoSuite,
       videoSRTP: Buffer.concat([request.video.srtp_key, request.video.srtp_salt]),
-      videoSSRC: 1,
+      videoSSRC: videoSSRC,
       audioPort: request.audio.port,
       audioCryptoSuite: request.audio.srtpCryptoSuite,
       audioSRTP: Buffer.concat([request.audio.srtp_key, request.audio.srtp_salt]),
-      audioSSRC: 1,
+      audioSSRC: audioSSRC,
     };
 
     this.pendingSessions.set(sessionId, sessionInfo);
     callback(undefined, response);
+  }
+
+  /**
+   * Generate a random SSRC value for RTP streams
+   */
+  private generateSSRC(): number {
+    return Math.floor(Math.random() * 0xFFFFFFFF);
   }
 
   handleStreamRequest(request: StreamingRequest, callback: StreamRequestCallback): void {
@@ -160,6 +171,9 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
 
     switch (request.type) {
       case StreamRequestTypes.START:
+        // Note: This implementation provides the RTSP URL to HomeKit, which handles the actual
+        // streaming. For more advanced scenarios, you could use ffmpeg to transcode the stream,
+        // but for basic RTSP streaming from 2N intercoms, HomeKit's native support is sufficient.
         this.log.info('Starting video stream from RTSP URL:', this.streamUrl);
         const sessionInfo = this.pendingSessions.get(sessionId);
         if (sessionInfo) {
