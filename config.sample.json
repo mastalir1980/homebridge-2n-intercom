@@ -1,0 +1,24 @@
+{
+  "bridge": {
+    "name": "Homebridge",
+    "username": "CC:22:3D:E3:CE:30",
+    "port": 51826,
+    "pin": "031-45-154"
+  },
+  "description": "Sample configuration for Homebridge with 2N Intercom plugin",
+  "platforms": [
+    {
+      "platform": "2NIntercom",
+      "name": "2N Intercom",
+      "host": "192.168.1.100",
+      "user": "admin",
+      "pass": "password",
+      "snapshotUrl": "http://192.168.1.100/api/camera/snapshot",
+      "streamUrl": "rtsp://192.168.1.100:554/stream",
+      "doorOpenUrl": "http://192.168.1.100/api/switch/ctrl?switch=1",
+      "doorStatusUrl": "http://192.168.1.100/api/io/status",
+      "pollInterval": 5000
+    }
+  ],
+  "accessories": []
+}

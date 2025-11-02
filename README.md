@@ -71,6 +71,41 @@ Add the following configuration to your Homebridge `config.json`:
 - Polls the status at the configured interval
 - Updates automatically when the state changes
 
+## 2N API Endpoints
+
+The plugin requires specific URLs for different functions. These URLs depend on your 2N intercom model and configuration. Here are some common examples:
+
+### Snapshot URL
+```
+http://<host>/api/camera/snapshot
+```
+
+### Stream URL
+```
+rtsp://<host>:554/stream
+```
+
+### Door Open URL
+```
+http://<host>/api/switch/ctrl?switch=1
+```
+
+### Door Status URL
+```
+http://<host>/api/io/status
+```
+
+**Note**: The exact API endpoints may vary depending on your 2N intercom model. Consult your 2N intercom documentation for the correct API endpoints.
+
+### Door Status Response Format
+
+The plugin attempts to parse various response formats for the door status:
+- JSON object: `{ "open": true }`, `{ "state": "open" }`, `{ "status": "open" }`
+- String: `"open"` or `"closed"`
+- Boolean: `true` (open) or `false` (closed)
+
+If your 2N intercom returns a different format, you may need to modify the parsing logic in `src/accessory.ts`.
+
 ## Development
 
 ```bash
