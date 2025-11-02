@@ -155,17 +155,25 @@ export class TwoNIntercomAccessory {
       });
 
       // Parse the door status response
-      // The 2N API may return different formats depending on the model and configuration:
-      // - Object with properties: { open: true/false } or { state: "open"/"closed" }
-      // - String: "open" or "closed"
-      // - Boolean: true (open) or false (closed)
-      // Users may need to customize this logic based on their specific 2N intercom API
+      // The 2N API /api/io/status returns JSON with inputs and outputs arrays:
+      // { "inputs": [{ "id": 0, "name": "DoorSensor", "value": 1 }], "outputs": [...] }
+      // Where value: 1 = active/open, value: 0 = inactive/closed
+      // This also supports other custom response formats for flexibility
       let isOpen = false;
       
       if (typeof response.data === 'object' && response.data !== null) {
-        // Try common property names that might indicate door state
-        isOpen = response.data.open || response.data.isOpen || response.data.state === 'open' || 
-                 response.data.status === 'open' || false;
+        // Official 2N API format with inputs array
+        if (Array.isArray(response.data.inputs) && response.data.inputs.length > 0) {
+          // Use the first input's value (1 = open, 0 = closed)
+          // You can modify this to check a specific input by id or name
+          isOpen = response.data.inputs[0].value === 1;
+        } 
+        // Fallback: Try common property names for custom/alternative APIs
+        else if (response.data.open !== undefined || response.data.isOpen !== undefined || 
+                 response.data.state !== undefined || response.data.status !== undefined) {
+          isOpen = response.data.open || response.data.isOpen || 
+                   response.data.state === 'open' || response.data.status === 'open' || false;
+        }
       } else if (typeof response.data === 'string') {
         isOpen = response.data.toLowerCase().includes('open');
       } else if (typeof response.data === 'boolean') {

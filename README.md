@@ -27,8 +27,8 @@ Add the following configuration to your Homebridge `config.json`:
       "user": "admin",
       "pass": "password",
       "snapshotUrl": "http://192.168.1.100/api/camera/snapshot",
-      "streamUrl": "rtsp://192.168.1.100:554/stream",
-      "doorOpenUrl": "http://192.168.1.100/api/switch/ctrl?switch=1",
+      "streamUrl": "rtsp://192.168.1.100:554/h264_stream",
+      "doorOpenUrl": "http://192.168.1.100/api/switch/ctrl?switch=1&action=trigger",
       "doorStatusUrl": "http://192.168.1.100/api/io/status",
       "pollInterval": 5000
     }
@@ -73,34 +73,66 @@ Add the following configuration to your Homebridge `config.json`:
 
 ## 2N API Endpoints
 
-The plugin requires specific URLs for different functions. These URLs depend on your 2N intercom model and configuration. Here are some common examples:
+The plugin uses the official 2N HTTP API. Below are the correct endpoints according to the [2N HTTP API Manual](https://wiki.2n.com/hip/hapi/latest/en):
 
-### Snapshot URL
+### Camera Snapshot
 ```
 http://<host>/api/camera/snapshot
 ```
+Optional parameters: `?width=<width>&height=<height>&source=<internal|external>`
 
-### Stream URL
-```
-rtsp://<host>:554/stream
-```
+**Documentation**: [api/camera/snapshot](https://wiki.2n.com/hip/hapi/latest/en/5-prehled-funkci-http-api/5-8-api-camera/5-8-2-api-camera-snapshot)
 
-### Door Open URL
+### RTSP Video Stream
 ```
-http://<host>/api/switch/ctrl?switch=1
+rtsp://<host>:554/h264_stream
 ```
+For MJPEG codec use: `rtsp://<host>:554/mjpeg_stream`
 
-### Door Status URL
+With authentication: `rtsp://<user>:<pass>@<host>:554/h264_stream`
+
+**Documentation**: [Streaming Configuration](https://wiki.2n.com/hip/conf/latest/en/5-konfigurace-interkomu/5-4-sluzby/5-4-2-streamovani)
+
+### Door Unlock (Switch Control)
+```
+http://<host>/api/switch/ctrl?switch=<num>&action=<action>
+```
+Parameters:
+- `switch`: Switch number (1, 2, 3, 4...)
+- `action`: `trigger` (monostable), `on`, `off`, `hold`, `release`, `lock`, `unlock`
+
+Example: `http://<host>/api/switch/ctrl?switch=1&action=trigger`
+
+**Documentation**: [api/switch/ctrl](https://wiki.2n.com/hip/hapi/latest/en/5-prehled-funkci-http-api/5-4-api-switch/5-4-3-api-switch-ctrl)
+
+### Door Status (I/O Monitoring)
 ```
 http://<host>/api/io/status
 ```
+Returns JSON with current status of inputs and outputs:
+```json
+{
+  "inputs": [
+    { "id": 0, "name": "DoorSensor", "value": 1 }
+  ],
+  "outputs": [
+    { "id": 0, "name": "Relay1", "value": 0 }
+  ]
+}
+```
+Where `value: 1` means active/on, `value: 0` means inactive/off.
 
-**Note**: The exact API endpoints may vary depending on your 2N intercom model. Consult your 2N intercom documentation for the correct API endpoints.
+**Documentation**: [HTTP API Manual](https://wiki.2n.com/hip/hapi/latest/en)
+
+### Authentication
+
+All API requests require HTTP authentication. Configure the username and password in the plugin settings. The 2N device must have HTTP API enabled in its web interface.
 
 ### Door Status Response Format
 
 The plugin attempts to parse various response formats for the door status:
-- JSON object: `{ "open": true }`, `{ "state": "open" }`, `{ "status": "open" }`
+- JSON object: `{ "open": true }`, `{ "isOpen": true }`, `{ "state": "open" }`, `{ "status": "open" }`
+- JSON with inputs array: `{ "inputs": [{ "value": 1 }] }` (1 = open, 0 = closed)
 - String: `"open"` or `"closed"`
 - Boolean: `true` (open) or `false` (closed)
 

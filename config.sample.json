@@ -14,8 +14,8 @@
       "user": "admin",
       "pass": "password",
       "snapshotUrl": "http://192.168.1.100/api/camera/snapshot",
-      "streamUrl": "rtsp://192.168.1.100:554/stream",
-      "doorOpenUrl": "http://192.168.1.100/api/switch/ctrl?switch=1",
+      "streamUrl": "rtsp://192.168.1.100:554/h264_stream",
+      "doorOpenUrl": "http://192.168.1.100/api/switch/ctrl?switch=1&action=trigger",
       "doorStatusUrl": "http://192.168.1.100/api/io/status",
       "pollInterval": 5000
     }
