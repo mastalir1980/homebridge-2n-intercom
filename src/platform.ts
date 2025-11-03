@@ -106,6 +106,9 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorOpenUrl: this.config.doorOpenUrl,
         switchDuration: this.config.switchDuration || 1000,
         type: 'switch',
+        enableDoorbell: this.config.enableDoorbell,
+        doorbellEventsUrl: this.config.doorbellEventsUrl,
+        doorbellPollingInterval: this.config.doorbellPollingInterval,
       };
 
       new TwoNIntercomAccessory(this, existingSwitchAccessory);
@@ -121,6 +124,9 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorOpenUrl: this.config.doorOpenUrl,
         switchDuration: this.config.switchDuration || 1000,
         type: 'switch',
+        enableDoorbell: this.config.enableDoorbell,
+        doorbellEventsUrl: this.config.doorbellEventsUrl,
+        doorbellPollingInterval: this.config.doorbellPollingInterval,
       };
 
       new TwoNIntercomAccessory(this, switchAccessory);
@@ -144,6 +150,9 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         snapshotUrl: this.config.snapshotUrl,
         streamUrl: this.config.streamUrl,
         type: 'camera',
+        enableDoorbell: this.config.enableDoorbell,
+        doorbellEventsUrl: this.config.doorbellEventsUrl,
+        doorbellPollingInterval: this.config.doorbellPollingInterval,
       };
 
       new TwoNIntercomAccessory(this, existingCameraAccessory);
@@ -159,6 +168,9 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         snapshotUrl: this.config.snapshotUrl,
         streamUrl: this.config.streamUrl,
         type: 'camera',
+        enableDoorbell: this.config.enableDoorbell,
+        doorbellEventsUrl: this.config.doorbellEventsUrl,
+        doorbellPollingInterval: this.config.doorbellPollingInterval,
       };
 
       new TwoNIntercomAccessory(this, cameraAccessory);
