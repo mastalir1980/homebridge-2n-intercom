@@ -243,10 +243,7 @@ export class TwoNIntercomAccessory {
     
     if (config.doorbellEventsUrl) {
       const pollInterval = config.doorbellPollingInterval || 2000;
-      this.platform.log.info(`🔔 Starting doorbell monitoring:`);
-      this.platform.log.info(`   URL: ${config.doorbellEventsUrl}`);
-      this.platform.log.info(`   User: ${config.user}`);
-      this.platform.log.info(`   Polling interval: ${pollInterval}ms`);
+      this.platform.log.info(`Starting doorbell monitoring every ${pollInterval}ms`);
       
       this.isPolling = true;
       this.checkDoorbellStatus();
@@ -269,7 +266,6 @@ export class TwoNIntercomAccessory {
 
     try {
       const config = this.accessory.context.device;
-      this.platform.log.debug(`Checking doorbell status at: ${config.doorbellEventsUrl}`);
       
       const response = await axios.get(config.doorbellEventsUrl!, {
         auth: {
@@ -279,19 +275,15 @@ export class TwoNIntercomAccessory {
         timeout: 5000,
       });
 
-      // Log the full API response for debugging
-      this.platform.log.info('🔍 Doorbell API Response:', JSON.stringify(response.data, null, 2));
-
       // Different 2N models return different formats
       let isCallActive = false;
       
       if (response.data && typeof response.data === 'object') {
-        // Handle your specific API format: sessions[].state === "ringing"
+        // Handle 2N API format: sessions[].state === "ringing"
         if (response.data.result && response.data.result.sessions) {
           for (const session of response.data.result.sessions) {
             if (session.state === 'ringing') {
               isCallActive = true;
-              this.platform.log.info(`📞 Active session found: ${session.session}, direction: ${session.direction}, state: ${session.state}`);
               break;
             }
             // Also check individual calls within session
@@ -299,7 +291,6 @@ export class TwoNIntercomAccessory {
               for (const call of session.calls) {
                 if (call.state === 'ringing') {
                   isCallActive = true;
-                  this.platform.log.info(`📞 Active call found: ${call.id}, state: ${call.state}, peer: ${call.peer}`);
                   break;
                 }
               }
@@ -318,30 +309,22 @@ export class TwoNIntercomAccessory {
         }
       }
 
-      this.platform.log.debug(`Call state: ${isCallActive ? 'ACTIVE' : 'IDLE'}, Last state: ${this.lastCallState ? 'ACTIVE' : 'IDLE'}`);
-
       // Trigger doorbell on state change from false to true
       if (isCallActive && !this.lastCallState) {
-        this.platform.log.info('🔔 State changed from IDLE to RINGING - triggering doorbell!');
+        this.platform.log.info('🔔 Doorbell button pressed!');
         this.triggerDoorbellEvent();
-      } else if (!isCallActive && this.lastCallState) {
-        this.platform.log.info('📵 State changed from RINGING to IDLE');
       }
       
       this.lastCallState = isCallActive;
 
     } catch (error) {
-      this.platform.log.error('❌ Error checking doorbell status:', error);
+      this.platform.log.error('Error checking doorbell status:', error);
       if (axios.isAxiosError(error) && error.response) {
-        this.platform.log.error('HTTP Status:', error.response.status);
-        this.platform.log.error('Response:', error.response.data);
+        this.platform.log.debug('HTTP Status:', error.response.status);
       }
     }
   }
 
-  /**
-   * Trigger doorbell event in HomeKit
-   */
   triggerDoorbellEvent(): void {
     this.platform.log.info('🔔 Doorbell button pressed!');
     

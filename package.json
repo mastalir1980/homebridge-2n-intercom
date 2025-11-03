@@ -1,8 +1,8 @@
 {
   "name": "homebridge-2n-intercom",
   "displayName": "Homebridge 2N Intercom",
-  "version": "1.0.0",
-  "description": "Homebridge plugin for 2N intercoms with camera, doorbell, and door control",
+  "version": "1.1.0",
+  "description": "Complete Homebridge plugin for 2N intercoms with door control, live video streaming, and doorbell notifications",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -13,8 +13,17 @@
     "homebridge-plugin",
     "2n",
     "intercom",
-    "doorbell",
-    "camera"
+    "doorbell", 
+    "camera",
+    "door-control",
+    "video-streaming",
+    "rtsp",
+    "home-automation",
+    "security",
+    "access-control",
+    "ip-verso",
+    "ip-force",
+    "ip-style"
   ],
   "engines": {
     "node": ">=18.0.0",
