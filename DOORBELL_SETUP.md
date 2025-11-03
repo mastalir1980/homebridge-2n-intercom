@@ -48,26 +48,44 @@ Different 2N models use different API endpoints. Try these URLs in your browser:
 
 ### Expected Response Formats:
 
-**Active call (button pressed):**
+**Active call (button pressed) - 2N Format:**
 ```json
 {
-  "call_state": "active",
-  "caller_id": "Button 1"
-}
-```
-
-**Or:**
-```json
-{
-  "state": "calling",
-  "ringing": true
+  "success": true,
+  "result": {
+    "sessions": [
+      {
+        "session": 65,
+        "direction": "outgoing", 
+        "state": "ringing",
+        "calls": [
+          {
+            "id": 65,
+            "state": "ringing",
+            "peer": "sip:4374834473@proxy.my2n.com:5061"
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 
 **No call:**
 ```json
 {
-  "call_state": "idle"
+  "success": true,
+  "result": {
+    "sessions": []
+  }
+}
+```
+
+**Alternative formats (other models):**
+```json
+{
+  "call_state": "active",
+  "caller_id": "Button 1"
 }
 ```
 

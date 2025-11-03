@@ -53,7 +53,7 @@
         "http://IP/api/switch/ctrl?switch=1&action=on",
         "",
         "Doorbell event URLs:",
-        "http://IP/api/call/status",
+        "http://IP/api/call/status (recommended - returns sessions with ringing state)",
         "http://IP/api/events/call",
         "http://IP/cgi-bin/call.cgi?status",
         "http://IP/api/device/status"
