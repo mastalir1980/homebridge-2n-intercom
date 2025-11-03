@@ -109,21 +109,15 @@ Test these URLs in your browser to find the right one:
 
 ### Camera Snapshot URLs
 Plugin automatically adds width/height parameters:
-- `http://IP/api/camera/snapshot` ✅ **Recommended**
-- `http://IP/cgi-bin/snapshot.cgi`
-- `http://IP/api/camera/live.jpg`
+- `http://IP/api/camera/snapshot`
 
 ### RTSP Stream URLs
-- `rtsp://IP:554/h264_stream` ✅ **Most common**
-- `rtsp://IP:554/stream`
-- `rtsp://IP:554/video`
-- `rtsp://IP:554/cam/realmonitor?channel=1&subtype=0`
+- `rtsp://IP:554/h264_stream` 
+
 
 ### Doorbell Event URLs
 For button press detection:
-- `http://IP/api/call/status` ✅ **Recommended**
-- `http://IP/api/events/call`
-- `http://IP/cgi-bin/call.cgi?status`
+- `http://IP/api/call/status` 
 
 ## Supported 2N Models
 
@@ -134,7 +128,7 @@ Tested and confirmed working:
 | 2N IP Verso | ✅ | ✅ | ✅ | ✅ |
 | 2N IP Force | ✅ | ✅ | ✅ | ✅ |
 | 2N IP Style | ✅ | ✅ | ✅ | ✅ |
-| 2N IP Solo | ✅ | ✅ | ✅ | ⚠️ Limited |
+| 2N IP Solo | ✅ | ✅ | ✅ | ✅ |
 
 ## Doorbell Setup
 
