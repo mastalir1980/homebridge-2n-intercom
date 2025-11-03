@@ -9,8 +9,8 @@ import { TwoNStreamingDelegate } from './streamingDelegate';
  */
 export class TwoNIntercomAccessory {
   // Active features
-  private switchService: Service;
-  private streamingDelegate: TwoNStreamingDelegate;
+  private switchService?: Service;
+  private streamingDelegate?: TwoNStreamingDelegate;
 
   // Future features (commented out)
   // private doorbellService: Service;
@@ -28,29 +28,39 @@ export class TwoNIntercomAccessory {
       .setCharacteristic(this.platform.Characteristic.Model, 'Intercom')
       .setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.device.host);
 
-    // Create Switch service for door unlock
-    this.switchService = this.accessory.getService(this.platform.Service.Switch) ||
-      this.accessory.addService(this.platform.Service.Switch, 'Door Unlock');
+    const deviceType = accessory.context.device.type;
 
-    this.switchService.setCharacteristic(this.platform.Characteristic.Name, 'Door Unlock');
+    // Create Switch service for door unlock (for switch accessory or combined)
+    if (deviceType === 'switch' || !deviceType) {
+      this.switchService = this.accessory.getService(this.platform.Service.Switch) ||
+        this.accessory.addService(this.platform.Service.Switch);
 
-    this.switchService.getCharacteristic(this.platform.Characteristic.On)
-      .onGet(this.handleSwitchOnGet.bind(this))
-      .onSet(this.handleSwitchOnSet.bind(this));
+      this.switchService.setCharacteristic(this.platform.Characteristic.Name, 'Door Unlock');
 
-    // Setup camera streaming
-    this.streamingDelegate = new TwoNStreamingDelegate(
-      this.platform.api.hap,
-      this.platform.log,
-      accessory.context.device.snapshotUrl,
-      accessory.context.device.streamUrl,
-      accessory.context.device.user,
-      accessory.context.device.pass,
-    );
+      this.switchService.getCharacteristic(this.platform.Characteristic.On)
+        .onGet(this.handleSwitchOnGet.bind(this))
+        .onSet(this.handleSwitchOnSet.bind(this));
 
-    // Configure camera controller
-    const cameraController = this.streamingDelegate.getController();
-    this.accessory.configureController(cameraController);
+      this.platform.log.info('Door unlock switch initialized');
+    }
+
+    // Setup camera streaming (for camera accessory)
+    if (deviceType === 'camera' && accessory.context.device.snapshotUrl && accessory.context.device.streamUrl) {
+      this.streamingDelegate = new TwoNStreamingDelegate(
+        this.platform.api.hap,
+        this.platform.log,
+        accessory.context.device.snapshotUrl,
+        accessory.context.device.streamUrl,
+        accessory.context.device.user,
+        accessory.context.device.pass,
+      );
+
+      // Configure camera controller  
+      const cameraController = this.streamingDelegate.getController();
+      this.accessory.configureController(cameraController);
+      
+      this.platform.log.info('Camera streaming enabled');
+    }
 
     // Future features (commented out)
     
@@ -108,11 +118,13 @@ export class TwoNIntercomAccessory {
         
         // Automatically turn off the switch after configured duration
         const switchDuration = this.accessory.context.device.switchDuration || 1000;
-        this.platform.log.info(`Switch will turn off after ${switchDuration}ms`);
+        this.platform.log.debug(`Switch will turn off after ${switchDuration}ms`);
         
         setTimeout(() => {
-          this.switchService.updateCharacteristic(this.platform.Characteristic.On, false);
-          this.platform.log.info('Switch turned off');
+          if (this.switchService) {
+            this.switchService.updateCharacteristic(this.platform.Characteristic.On, false);
+            this.platform.log.debug('Switch turned off');
+          }
         }, switchDuration);
       } catch (error) {
         this.platform.log.error('Error unlocking door:', error);
@@ -136,7 +148,7 @@ export class TwoNIntercomAccessory {
         timeout: 5000,
       });
 
-      this.platform.log.info('Door unlocked successfully');
+      this.platform.log.debug('Door unlocked successfully');
     } catch (error) {
       this.platform.log.error('Failed to unlock door:', error);
       throw error;

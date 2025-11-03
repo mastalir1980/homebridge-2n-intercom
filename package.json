@@ -31,7 +31,8 @@
   },
   "homepage": "https://github.com/mastalir1980/homebridge-2n-intercom#readme",
   "dependencies": {
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "ffmpeg-for-homebridge": "^2.1.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

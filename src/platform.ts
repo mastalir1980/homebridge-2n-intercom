@@ -41,9 +41,9 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
       return;
     }
 
+    // Camera URLs are optional - if not provided, only switch will be available
     if (!this.config.snapshotUrl || !this.config.streamUrl) {
-      this.log.error('Missing required configuration: snapshotUrl, streamUrl');
-      return;
+            this.log.debug('Camera streaming enabled');
     }
 
     /* Future features validation commented out
@@ -81,45 +81,88 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
    * must not be registered again to prevent "duplicate UUID" errors.
    */
   discoverDevices() {
-    // Generate a unique id for the accessory
-    const uuid = this.api.hap.uuid.generate(this.config.host);
+    // Create two separate accessories for better HomeKit compatibility
+    this.createSwitchAccessory();
+    
+    // Only create camera accessory if URLs are provided
+    if (this.config.snapshotUrl && this.config.streamUrl) {
+      this.createCameraAccessory();
+    }
+  }
 
-    // see if an accessory with the same uuid has already been registered and restored from
-    // the cached devices we stored in the `configureAccessory` method above
-    const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
+  private createSwitchAccessory() {
+    // Generate UUID for switch accessory
+    const switchUuid = this.api.hap.uuid.generate(this.config.host + '-switch');
+    const existingSwitchAccessory = this.accessories.find(accessory => accessory.UUID === switchUuid);
 
-    if (existingAccessory) {
-      // the accessory already exists
-      this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
-
-      // create the accessory handler for the restored accessory
-      new TwoNIntercomAccessory(this, existingAccessory);
-    } else {
-      // the accessory does not yet exist, so we need to create it
-      this.log.info('Adding new accessory:', this.config.name || '2N Intercom');
-
-      // create a new accessory
-      const accessory = new this.api.platformAccessory(this.config.name || '2N Intercom', uuid);
-
-      // Store device configuration
-      accessory.context.device = {
+    if (existingSwitchAccessory) {
+      this.log.info('Restoring existing switch accessory from cache:', existingSwitchAccessory.displayName);
+      
+      // Update context
+      existingSwitchAccessory.context.device = {
         host: this.config.host,
         user: this.config.user,
         pass: this.config.pass,
         doorOpenUrl: this.config.doorOpenUrl,
         switchDuration: this.config.switchDuration || 1000,
-        snapshotUrl: this.config.snapshotUrl,
-        streamUrl: this.config.streamUrl,
-        // Future features
-        // doorStatusUrl: this.config.doorStatusUrl,
-        // pollInterval: this.config.pollInterval || 5000,
+        type: 'switch',
       };
 
-      // create the accessory handler for the newly create accessory
-      new TwoNIntercomAccessory(this, accessory);
+      new TwoNIntercomAccessory(this, existingSwitchAccessory);
+    } else {
+      this.log.info('Adding new switch accessory:', (this.config.name || '2N Intercom') + ' Switch');
+      
+      const switchAccessory = new this.api.platformAccessory((this.config.name || '2N Intercom') + ' Switch', switchUuid);
+      
+      switchAccessory.context.device = {
+        host: this.config.host,
+        user: this.config.user,
+        pass: this.config.pass,
+        doorOpenUrl: this.config.doorOpenUrl,
+        switchDuration: this.config.switchDuration || 1000,
+        type: 'switch',
+      };
 
-      // link the accessory to your platform
-      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      new TwoNIntercomAccessory(this, switchAccessory);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [switchAccessory]);
+    }
+  }
+
+  private createCameraAccessory() {
+    // Generate UUID for camera accessory  
+    const cameraUuid = this.api.hap.uuid.generate(this.config.host + '-camera');
+    const existingCameraAccessory = this.accessories.find(accessory => accessory.UUID === cameraUuid);
+
+    if (existingCameraAccessory) {
+      this.log.info('Restoring existing camera accessory from cache:', existingCameraAccessory.displayName);
+      
+      // Update context
+      existingCameraAccessory.context.device = {
+        host: this.config.host,
+        user: this.config.user,
+        pass: this.config.pass,
+        snapshotUrl: this.config.snapshotUrl,
+        streamUrl: this.config.streamUrl,
+        type: 'camera',
+      };
+
+      new TwoNIntercomAccessory(this, existingCameraAccessory);
+    } else {
+      this.log.info('Adding new camera accessory:', (this.config.name || '2N Intercom') + ' Camera');
+      
+      const cameraAccessory = new this.api.platformAccessory((this.config.name || '2N Intercom') + ' Camera', cameraUuid);
+      
+      cameraAccessory.context.device = {
+        host: this.config.host,
+        user: this.config.user,
+        pass: this.config.pass,
+        snapshotUrl: this.config.snapshotUrl,
+        streamUrl: this.config.streamUrl,
+        type: 'camera',
+      };
+
+      new TwoNIntercomAccessory(this, cameraAccessory);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [cameraAccessory]);
     }
   }
 }

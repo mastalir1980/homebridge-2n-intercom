@@ -20,8 +20,8 @@ export interface TwoNIntercomConfig {
   doorOpenUrl: string;
   switchDuration?: number; // Duration in milliseconds that switch stays on, defaults to 1000
   // Camera and streaming features
-  snapshotUrl: string;
-  streamUrl: string;
+  snapshotUrl?: string; // URL for camera snapshots (e.g., http://IP/api/camera/snapshot)
+  streamUrl?: string; // RTSP URL for video streaming (e.g., rtsp://IP:554/stream)
   // Door status polling (future)
   // doorStatusUrl?: string;
   // pollInterval?: number;
