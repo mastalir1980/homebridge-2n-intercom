@@ -135,7 +135,6 @@ Tested and confirmed working:
 | 2N IP Force | ✅ | ✅ | ✅ | ✅ |
 | 2N IP Style | ✅ | ✅ | ✅ | ✅ |
 | 2N IP Solo | ✅ | ✅ | ✅ | ⚠️ Limited |
-| 2N Analog + Gateway | ✅ | ⚠️ Limited | ❌ | ❌ |
 
 ## Doorbell Setup
 
@@ -231,7 +230,7 @@ Found a bug or want to contribute?
 
 ## License
 
-MIT © mastalir1980
+MIT © Jan Maštalíř
 
 ---
 
