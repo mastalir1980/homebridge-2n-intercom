@@ -11,12 +11,12 @@ export class TwoNIntercomAccessory {
   // Active features
   private switchService?: Service;
   private streamingDelegate?: TwoNStreamingDelegate;
+  private doorbellService?: Service;
 
-  // Future features (commented out)
-  // private doorbellService: Service;
-  // private contactSensorService: Service;
-  // private doorState: CharacteristicValue = this.platform.Characteristic.ContactSensorState.CONTACT_DETECTED;
-  // private pollInterval: NodeJS.Timeout | null = null;
+  // Doorbell state tracking
+  private isPolling = false;
+  private pollingInterval?: NodeJS.Timeout;
+  private lastCallState = false;
 
   constructor(
     private readonly platform: TwoNIntercomPlatform,
@@ -62,15 +62,21 @@ export class TwoNIntercomAccessory {
       this.platform.log.info('Camera streaming enabled');
     }
 
-    // Future features (commented out)
-    
-    /* Doorbell service disabled
-    this.doorbellService = this.accessory.getService(this.platform.Service.Doorbell) ||
-      this.accessory.addService(this.platform.Service.Doorbell);
-    this.doorbellService.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName);
-    this.doorbellService.getCharacteristic(this.platform.Characteristic.ProgrammableSwitchEvent)
-      .onGet(this.handleProgrammableSwitchEventGet.bind(this));
-    */
+    // Add doorbell service if enabled
+    if (accessory.context.device.enableDoorbell) {
+      this.doorbellService = this.accessory.getService(this.platform.Service.Doorbell) ||
+        this.accessory.addService(this.platform.Service.Doorbell);
+      this.doorbellService.setCharacteristic(this.platform.Characteristic.Name, `${accessory.displayName} Doorbell`);
+      
+      // Set up doorbell event handling
+      this.doorbellService.getCharacteristic(this.platform.Characteristic.ProgrammableSwitchEvent)
+        .onGet(this.handleProgrammableSwitchEventGet.bind(this));
+
+      this.platform.log.info('Doorbell service enabled for:', accessory.displayName);
+      
+      // Start monitoring for doorbell events
+      this.startDoorbellMonitoring();
+    }
 
     /* Contact Sensor service disabled
     this.contactSensorService = this.accessory.getService(this.platform.Service.ContactSensor) ||
@@ -219,4 +225,101 @@ export class TwoNIntercomAccessory {
     );
   }
   */
+
+  /**
+   * Handle GET requests for doorbell events
+   */
+  async handleProgrammableSwitchEventGet(): Promise<CharacteristicValue> {
+    this.platform.log.debug('Triggered GET ProgrammableSwitchEvent');
+    // This is just for HomeKit compatibility, actual events are triggered via polling/webhooks
+    return this.platform.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS;
+  }
+
+  /**
+   * Start monitoring for doorbell button presses
+   */
+  startDoorbellMonitoring(): void {
+    const config = this.accessory.context.device;
+    
+    if (config.doorbellEventsUrl) {
+      const pollInterval = config.doorbellPollingInterval || 2000;
+      this.platform.log.info(`Starting doorbell monitoring every ${pollInterval}ms`);
+      
+      this.isPolling = true;
+      this.checkDoorbellStatus();
+      
+      this.pollingInterval = setInterval(() => {
+        this.checkDoorbellStatus();
+      }, pollInterval);
+    } else {
+      this.platform.log.warn('Doorbell enabled but no doorbellEventsUrl configured');
+    }
+  }
+
+  /**
+   * Check for doorbell button press events
+   */
+  async checkDoorbellStatus(): Promise<void> {
+    if (!this.isPolling) {
+      return;
+    }
+
+    try {
+      const config = this.accessory.context.device;
+      const response = await axios.get(config.doorbellEventsUrl!, {
+        auth: {
+          username: config.user,
+          password: config.pass,
+        },
+        timeout: 5000,
+      });
+
+      // Different 2N models return different formats
+      let isCallActive = false;
+      
+      if (response.data && typeof response.data === 'object') {
+        // Handle various API response formats
+        isCallActive = response.data.call_state === 'active' ||
+                      response.data.state === 'calling' ||
+                      response.data.status === 'incoming' ||
+                      response.data.ringing === true ||
+                      (response.data.calls && response.data.calls.length > 0);
+      }
+
+      // Trigger doorbell on state change from false to true
+      if (isCallActive && !this.lastCallState) {
+        this.triggerDoorbellEvent();
+      }
+      
+      this.lastCallState = isCallActive;
+
+    } catch (error) {
+      this.platform.log.error('Error checking doorbell status:', error);
+    }
+  }
+
+  /**
+   * Trigger doorbell event in HomeKit
+   */
+  triggerDoorbellEvent(): void {
+    this.platform.log.info('🔔 Doorbell button pressed!');
+    
+    if (this.doorbellService) {
+      this.doorbellService.updateCharacteristic(
+        this.platform.Characteristic.ProgrammableSwitchEvent,
+        this.platform.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS,
+      );
+    }
+  }
+
+  /**
+   * Stop doorbell monitoring when accessory is removed
+   */
+  stopDoorbellMonitoring(): void {
+    this.isPolling = false;
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = undefined;
+    }
+  }
 }

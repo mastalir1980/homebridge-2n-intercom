@@ -22,7 +22,10 @@ export interface TwoNIntercomConfig {
   // Camera and streaming features
   snapshotUrl?: string; // URL for camera snapshots (e.g., http://IP/api/camera/snapshot)
   streamUrl?: string; // RTSP URL for video streaming (e.g., rtsp://IP:554/stream)
-  // Door status polling (future)
-  // doorStatusUrl?: string;
-  // pollInterval?: number;
+  
+  // Doorbell configuration
+  enableDoorbell?: boolean; // Enable doorbell functionality
+  doorbellEventsUrl?: string;  // API endpoint to check for button press events (e.g., "http://IP/api/call/status")
+  doorbellPollingInterval?: number; // Polling interval in ms (default: 2000)
+  doorbellWebhookPort?: number; // Port for receiving webhooks from 2N (optional)
 }
