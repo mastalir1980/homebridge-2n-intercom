@@ -103,9 +103,6 @@ When configured, this plugin creates up to **two separate HomeKit accessories**:
 ### Door Control URLs
 Test these URLs in your browser to find the right one:
 - `http://IP/api/switch/ctrl?switch=1&action=trigger` ✅ **Most common**
-- `http://IP/api/door/open`
-- `http://IP/cgi-bin/door.cgi?action=open`
-- `http://IP/api/switch/ctrl?switch=1&action=on`
 
 ### Camera Snapshot URLs
 Plugin automatically adds width/height parameters:
@@ -113,7 +110,6 @@ Plugin automatically adds width/height parameters:
 
 ### RTSP Stream URLs
 - `rtsp://IP:554/h264_stream` 
-
 
 ### Doorbell Event URLs
 For button press detection:
@@ -137,8 +133,6 @@ When someone presses your intercom button:
 2. 📱 **iPhone/Apple Watch gets notification**
 3. 📹 **Camera stream available immediately**
 4. 🏠 **Can trigger HomeKit automations**
-
-For detailed doorbell configuration, see [DOORBELL_SETUP.md](DOORBELL_SETUP.md)
 
 ## Troubleshooting
 
