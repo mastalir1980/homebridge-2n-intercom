@@ -53,10 +53,12 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   private readonly user: string;
   private readonly pass: string;
   
-  // Retry configuration
-  private readonly maxRetries = 3;
-  private readonly retryDelay = 2000; // 2 seconds
-  private readonly connectionTimeout = 15000; // 15 seconds
+  // Optimized retry configuration for faster stream startup
+  private readonly maxRetries = 2; // Reduced from 3 for faster failure recovery
+  private readonly retryDelay = 1000; // Reduced from 2000ms to 1s
+  private readonly connectionTimeout = 8000; // Reduced from 15s to 8s
+  private readonly rtspTestTimeout = 3000; // New: quick RTSP test (reduced from 8s)
+  private readonly fallbackTimeout = 2000; // New: faster fallback (reduced from 3s)
   private readonly debugMode: boolean; // Debug mode from config
 
   controller?: CameraController;
@@ -79,7 +81,8 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     this.log.info(`📡 Stream URL: ${this.streamUrl}`);
     this.log.info(`📷 Snapshot URL: ${this.snapshotUrl}`);
     this.log.info(`🔧 Debug mode: ${this.debugMode ? 'ENABLED' : 'DISABLED'}`);
-    this.log.info(`⚙️ Retry config: max=${this.maxRetries}, delay=${this.retryDelay}ms, timeout=${this.connectionTimeout}ms`);
+    this.log.info(`⚡ Optimized timeouts: RTSP=${this.rtspTestTimeout}ms, Stream=${this.connectionTimeout}ms, Retry=${this.retryDelay}ms`);
+    this.log.info(`🚀 Fast startup config: max_retries=${this.maxRetries}, fallback=${this.fallbackTimeout}ms`);
   }
 
   private createCameraControllerOptions(): CameraControllerOptions {
@@ -360,11 +363,11 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
 
         const testTimeout = setTimeout(() => {
           if (!testSuccessful) {
-            this.log.warn('⏰ RTSP connection test timeout (8 seconds)');
+            this.log.warn(`⏰ RTSP connection test timeout (${this.rtspTestTimeout}ms - optimized for faster startup)`);
             testProcess.kill('SIGTERM');
             resolve(false);
           }
-        }, 8000);
+        }, this.rtspTestTimeout); // Optimized: 3 seconds instead of 8
 
         testProcess.on('exit', (code) => {
           clearTimeout(testTimeout);
@@ -410,10 +413,10 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       return;
     }
 
-    this.log.warn(`⏳ RETRYING in ${this.retryDelay}ms... (attempt ${sessionInfo.retryCount + 1}/${this.maxRetries})`);
+    this.log.warn(`⏳ FAST RETRY in ${this.retryDelay}ms... (optimized delay, attempt ${sessionInfo.retryCount + 1}/${this.maxRetries})`);
 
     setTimeout(async () => {
-      this.log.info(`🔄 STARTING RETRY ATTEMPT ${sessionInfo.retryCount + 1}/${this.maxRetries}`);
+      this.log.info(`🔄 STARTING RETRY ATTEMPT ${sessionInfo.retryCount + 1}/${this.maxRetries} (fast recovery mode)`);
       await this.startActualStream(sessionId, sessionInfo, request, callback);
     }, this.retryDelay);
   }
@@ -511,10 +514,10 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       
       // Track if stream started successfully
       let streamStarted = false;
-      this.log.info(`⏱️ Setting ${this.connectionTimeout}ms timeout for stream startup...`);
+      this.log.info(`⏱️ Setting optimized ${this.connectionTimeout}ms timeout for stream startup...`);
       const startTimeout = setTimeout(() => {
         if (!streamStarted && !callbackCalled) {
-          this.log.warn(`⏰ STREAM STARTUP TIMEOUT (${this.connectionTimeout}ms) - killing process`);
+          this.log.warn(`⏰ STREAM STARTUP TIMEOUT (${this.connectionTimeout}ms - optimized) - killing process`);
           ffmpegProcess.kill('SIGTERM');
           this.handleStreamRetry(sessionId, sessionInfo, request, safeCallback, 'Stream startup timeout');
         }
@@ -562,12 +565,15 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
           this.log.debug(`📺 FFmpeg: ${message}`);
         }
         
-        // Check for successful stream start indicators
-        if (message.includes('Opening') || message.includes('Stream #') || message.includes('fps=')) {
+        // Optimized: Check for successful stream start indicators (faster detection)
+        if (message.includes('Input #') || message.includes('Stream mapping') || 
+            message.includes('Output #') || message.includes('Stream #') ||
+            message.includes('encoder') || message.includes('muxer') ||
+            message.includes('Opening') || message.includes('fps=')) {
           if (!streamStarted && !callbackCalled) {
             streamStarted = true;
             clearTimeout(startTimeout);
-            this.log.info('✅ STREAM STARTED SUCCESSFULLY! (detected from FFmpeg output)');
+            this.log.info('✅ STREAM STARTED FAST! (early FFmpeg output detected)');
             
             this.ongoingSessions.set(sessionId, ffmpegProcess);
             this.pendingSessions.delete(sessionId);
@@ -595,19 +601,19 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
         this.log.info(`📺 FFmpeg stdout: ${data.toString().trim()}`);
       });
       
-      // Fallback success callback if no stderr data indicates success
-      this.log.info('⏱️ Setting 3-second fallback timeout...');
+      // Optimized fallback success callback - faster response
+      this.log.info(`⏱️ Setting optimized ${this.fallbackTimeout}ms fallback timeout...`);
       setTimeout(() => {
         if (!streamStarted && !callbackCalled) {
           streamStarted = true;
           clearTimeout(startTimeout);
-          this.log.info('✅ STREAM ASSUMED STARTED (fallback - no errors detected after 3s)');
+          this.log.info(`✅ STREAM ASSUMED STARTED (fast fallback - no errors detected after ${this.fallbackTimeout}ms)`);
           
           this.ongoingSessions.set(sessionId, ffmpegProcess);
           this.pendingSessions.delete(sessionId);
           safeCallback();
         }
-      }, 3000); // 3 second fallback
+      }, this.fallbackTimeout); // Optimized: 2 seconds instead of 3
 
     } catch (error) {
       this.log.error('❌ EXCEPTION in startActualStream:', error);
