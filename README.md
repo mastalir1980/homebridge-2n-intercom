@@ -5,16 +5,6 @@
 
 Complete Homebridge plugin for 2N intercoms with door control, live video streaming, and doorbell notifications.
 
-## 🚀 Version 1.2.2-debug - Enhanced Video Stream Reliability
-
-This debug version includes significant improvements to video streaming reliability:
-
-- **Retry Logic**: Automatic retry mechanism (up to 3 attempts) for failed video streams
-- **Connection Testing**: Pre-stream RTSP connection validation
-- **Enhanced Error Handling**: Better detection and handling of connection failures
-- **Debug Logging**: Detailed logging for troubleshooting stream issues
-- **Improved FFmpeg Parameters**: Optimized settings for better stream stability
-
 ## Features
 
 - 🚪 **Door Control Switch** - Open doors remotely with auto-off timer
