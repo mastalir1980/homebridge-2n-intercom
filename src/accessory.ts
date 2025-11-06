@@ -53,6 +53,7 @@ export class TwoNIntercomAccessory {
         accessory.context.device.streamUrl,
         accessory.context.device.user,
         accessory.context.device.pass,
+        true // Enable debug mode for retry logging
       );
 
       // Configure camera controller  
