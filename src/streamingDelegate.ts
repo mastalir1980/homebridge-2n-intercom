@@ -76,10 +76,12 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     // Set debug mode (override the readonly default)
     (this as any).debugMode = debugMode;
     
-    if (this.debugMode) {
-      this.log.info('🎬 StreamingDelegate initialized in debug mode');
-      this.log.info(`📡 Stream URL: ${this.streamUrl}`);
-    }
+    // Always log initialization for visibility
+    this.log.info('🎬 TwoNStreamingDelegate initializing...');
+    this.log.info(`📡 Stream URL: ${this.streamUrl}`);
+    this.log.info(`📷 Snapshot URL: ${this.snapshotUrl}`);
+    this.log.info(`🔧 Debug mode: ${this.debugMode ? 'ENABLED' : 'DISABLED'}`);
+    this.log.info(`⚙️ Retry config: max=${this.maxRetries}, delay=${this.retryDelay}ms, timeout=${this.connectionTimeout}ms`);
   }
 
   private createCameraControllerOptions(): CameraControllerOptions {
@@ -129,13 +131,15 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   }
 
   async handleSnapshotRequest(request: SnapshotRequest, callback: SnapshotRequestCallback): Promise<void> {
+    this.log.info(`📸 SNAPSHOT REQUEST: ${request.width}x${request.height}`);
+    
     try {
-      this.log.debug('Snapshot requested:', request.width, 'x', request.height);
-      
       // Build snapshot URL with required parameters
       const snapshotUrl = new URL(this.snapshotUrl);
       snapshotUrl.searchParams.set('width', request.width.toString());
       snapshotUrl.searchParams.set('height', request.height.toString());
+      
+      this.log.info(`📸 Requesting snapshot from: ${snapshotUrl.toString().replace(this.pass, '***')}`);
       
       const response = await axios.get(snapshotUrl.toString(), {
         auth: {
@@ -146,9 +150,12 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
         timeout: 10000,
       });
 
+      this.log.info(`📸 Snapshot received: ${response.data.byteLength} bytes, status: ${response.status}`);
+
       callback(undefined, Buffer.from(response.data));
+      this.log.info('✅ Snapshot delivered successfully');
     } catch (error) {
-      this.log.error('Error fetching snapshot:', error);
+      this.log.error('❌ SNAPSHOT ERROR:', error);
       callback(error as Error);
     }
   }
@@ -157,9 +164,13 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     const sessionId = request.sessionID;
     const targetAddress = request.targetAddress;
 
+    this.log.info(`🔧 PREPARE STREAM: SessionID=${sessionId}, Target=${targetAddress}`);
+
     // Generate unique SSRC values for each session
     const videoSSRC = this.generateSSRC();
     const audioSSRC = this.generateSSRC();
+    
+    this.log.info(`🔧 Generated SSRC: video=${videoSSRC}, audio=${audioSSRC}`);
 
     const response: PrepareStreamResponse = {
       address: targetAddress,
@@ -199,6 +210,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     };
 
     this.pendingSessions.set(sessionId, sessionInfo);
+    this.log.info(`✅ STREAM PREPARED: SessionID=${sessionId}, VideoPort=${request.video.port}, VideoSize=${sessionInfo.videoWidth}x${sessionInfo.videoHeight}`);
     callback(undefined, response);
   }
 
@@ -212,33 +224,41 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
 
   async handleStreamRequest(request: StreamingRequest, callback: StreamRequestCallback): Promise<void> {
     const sessionId = request.sessionID;
+    
+    this.log.info(`🎬 STREAM REQUEST: SessionID=${sessionId}, Type=${request.type === StreamRequestTypes.START ? 'START' : request.type === StreamRequestTypes.STOP ? 'STOP' : 'RECONFIGURE'}`);
 
     try {
       switch (request.type) {
         case StreamRequestTypes.START:
+          this.log.info(`▶️ STARTING STREAM: SessionID=${sessionId}`);
           await this.startStream(sessionId, request, callback);
           break;
         case StreamRequestTypes.RECONFIGURE:
-          this.log.debug('Reconfigure stream request received');
+          this.log.info(`🔧 RECONFIGURING STREAM: SessionID=${sessionId}`);
           // Update video properties based on request
           if (request.video) {
             const sessionInfo = this.pendingSessions.get(sessionId);
             if (sessionInfo) {
               if (request.video.width && request.video.height) {
+                this.log.info(`🔧 Updating resolution: ${sessionInfo.videoWidth}x${sessionInfo.videoHeight} → ${request.video.width}x${request.video.height}`);
                 sessionInfo.videoWidth = request.video.width;
                 sessionInfo.videoHeight = request.video.height;
             }
             if (request.video.max_bit_rate) {
+              this.log.info(`🔧 Updating bitrate: ${sessionInfo.videoBitrate} → ${request.video.max_bit_rate}`);
               sessionInfo.videoBitrate = request.video.max_bit_rate;
             }
             if (request.video.fps) {
+              this.log.info(`🔧 Updating FPS: ${sessionInfo.videoFPS} → ${request.video.fps}`);
               sessionInfo.videoFPS = request.video.fps;
             }
           }
         }
+        this.log.info(`✅ STREAM RECONFIGURED: SessionID=${sessionId}`);
         callback();
         break;
       case StreamRequestTypes.STOP:
+        this.log.info(`⏹️ STOPPING STREAM: SessionID=${sessionId}`);
         this.stopStream(sessionId, callback);
         break;
     }
@@ -249,15 +269,24 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   }
 
   private async startStream(sessionId: string, request: StreamingRequest, callback: StreamRequestCallback): Promise<void> {
+    this.log.info(`🎬 START STREAM METHOD: SessionID=${sessionId}`);
+    
     const sessionInfo = this.pendingSessions.get(sessionId);
     if (!sessionInfo) {
-      this.log.error('Error finding session information.');
+      this.log.error('❌ ERROR: Session information not found');
       callback(new Error('Missing session info'));
       return;
     }
 
+    this.log.info(`📋 Session found: ${sessionInfo.address}:${sessionInfo.videoPort}`);
+
     // Update session info with stream request details if it's a StartStreamRequest
     if (request.type === StreamRequestTypes.START && 'video' in request) {
+      this.log.info(`🔧 Updating session with request params:`);
+      this.log.info(`   Resolution: ${sessionInfo.videoWidth}x${sessionInfo.videoHeight} → ${request.video.width || 640}x${request.video.height || 480}`);
+      this.log.info(`   Bitrate: ${sessionInfo.videoBitrate} → ${request.video.max_bit_rate || 1000} kbps`);
+      this.log.info(`   FPS: ${sessionInfo.videoFPS} → ${request.video.fps || 15}`);
+      
       sessionInfo.videoWidth = request.video.width || 640;
       sessionInfo.videoHeight = request.video.height || 480;
       sessionInfo.videoBitrate = request.video.max_bit_rate || 1000;
@@ -268,41 +297,47 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     sessionInfo.retryCount = 0;
     sessionInfo.startTime = Date.now();
 
-    this.log.debug(`Starting video stream (${sessionInfo.videoWidth}x${sessionInfo.videoHeight}, ${sessionInfo.videoBitrate} kbps, ${sessionInfo.videoFPS} fps)`);
-    this.log.debug(`HomeKit requested: ${request.type === StreamRequestTypes.START && 'video' in request ? request.video.max_bit_rate : 'N/A'} kbps`);
+    this.log.info(`🎯 FINAL STREAM CONFIG: ${sessionInfo.videoWidth}x${sessionInfo.videoHeight}, ${sessionInfo.videoBitrate} kbps, ${sessionInfo.videoFPS} fps`);
     
     // Test RTSP connection before starting stream
+    this.log.info(`🔍 Testing RTSP connection...`);
     const connectionOk = await this.testRTSPConnection();
     if (!connectionOk) {
-      this.log.error('❌ RTSP connection test failed');
+      this.log.error('❌ RTSP CONNECTION TEST FAILED');
       callback(new Error('RTSP connection test failed'));
       return;
     }
 
-    if (this.debugMode) {
-      this.log.info(`🎬 Starting video stream for session: ${sessionId}`);
-    }
+    this.log.info(`✅ RTSP CONNECTION TEST PASSED`);
+    this.log.info(`🚀 Proceeding to start actual stream for session: ${sessionId}`);
 
     await this.startActualStream(sessionId, sessionInfo, request, callback);
   }
 
   private async testRTSPConnection(): Promise<boolean> {
+    this.log.info('🔍 RTSP CONNECTION TEST STARTING...');
+    
     try {
-      if (this.debugMode) {
-        this.log.info('🔍 Testing RTSP connection...');
-      }
-
       const authenticatedUrl = `rtsp://${encodeURIComponent(this.user)}:${encodeURIComponent(this.pass)}@${this.streamUrl.replace('rtsp://', '')}`;
+      const safeUrl = authenticatedUrl.replace(this.pass, '***');
+      this.log.info(`🔗 Testing URL: ${safeUrl}`);
       
       let actualFfmpegPath = ffmpegPath;
+      this.log.info(`🔧 FFmpeg path: ${ffmpegPath}`);
+      
       if (!existsSync(ffmpegPath)) {
+        this.log.warn(`⚠️ FFmpeg not found at default path: ${ffmpegPath}`);
         const systemPaths = ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg'];
         for (const path of systemPaths) {
+          this.log.info(`🔍 Trying alternative path: ${path}`);
           if (path === 'ffmpeg' || existsSync(path)) {
             actualFfmpegPath = path;
+            this.log.info(`✅ Found FFmpeg at: ${actualFfmpegPath}`);
             break;
           }
         }
+      } else {
+        this.log.info(`✅ FFmpeg found at default path`);
       }
 
       return new Promise<boolean>((resolve) => {
@@ -317,15 +352,14 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
           '-'
         ];
 
+        this.log.info(`🚀 Starting FFmpeg test process with args: ${testArgs.map(arg => arg.includes(this.pass) ? '***' : arg).join(' ')}`);
         const testProcess = spawn(actualFfmpegPath, testArgs);
         let testSuccessful = false;
 
         const testTimeout = setTimeout(() => {
           if (!testSuccessful) {
+            this.log.warn('⏰ RTSP connection test timeout (8 seconds)');
             testProcess.kill('SIGTERM');
-            if (this.debugMode) {
-              this.log.warn('⚠️ RTSP connection test timeout');
-            }
             resolve(false);
           }
         }, 8000);
@@ -334,25 +368,27 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
           clearTimeout(testTimeout);
           testSuccessful = true;
           const success = code === 0;
-          if (this.debugMode) {
-            this.log.info(`🔍 RTSP test result: ${success ? 'SUCCESS' : 'FAILED'} (code: ${code})`);
-          }
+          this.log.info(`🔍 RTSP TEST RESULT: ${success ? '✅ SUCCESS' : '❌ FAILED'} (exit code: ${code})`);
           resolve(success);
         });
 
-        testProcess.on('error', () => {
+        testProcess.on('error', (error) => {
           clearTimeout(testTimeout);
           testSuccessful = true;
-          if (this.debugMode) {
-            this.log.warn('⚠️ RTSP connection test failed');
-          }
+          this.log.error(`❌ RTSP test process error: ${error.message}`);
           resolve(false);
+        });
+        
+        // Add stderr logging for test process
+        testProcess.stderr?.on('data', (data) => {
+          const message = data.toString().trim();
+          if (message) {
+            this.log.warn(`🔍 RTSP test stderr: ${message}`);
+          }
         });
       });
     } catch (error) {
-      if (this.debugMode) {
-        this.log.error('❌ RTSP test error:', error);
-      }
+      this.log.error('❌ RTSP TEST EXCEPTION:', error);
       return false;
     }
   }
@@ -361,42 +397,52 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     sessionInfo.retryCount++;
     sessionInfo.lastError = error;
 
+    this.log.warn(`🔄 RETRY HANDLER: SessionID=${sessionId}, Attempt=${sessionInfo.retryCount}/${this.maxRetries}`);
+    this.log.warn(`🔄 Error that triggered retry: ${error}`);
+
     if (sessionInfo.retryCount >= this.maxRetries) {
-      this.log.error(`❌ Stream failed after ${this.maxRetries} attempts: ${error}`);
+      this.log.error(`❌ STREAM FAILED PERMANENTLY after ${this.maxRetries} attempts`);
+      this.log.error(`❌ Final error: ${error}`);
       this.pendingSessions.delete(sessionId);
       callback(new Error(`Stream failed: ${error}`));
       return;
     }
 
-    this.log.warn(`⚠️ Stream attempt ${sessionInfo.retryCount} failed: ${error}. Retrying in ${this.retryDelay}ms...`);
+    this.log.warn(`⏳ RETRYING in ${this.retryDelay}ms... (attempt ${sessionInfo.retryCount + 1}/${this.maxRetries})`);
 
     setTimeout(async () => {
+      this.log.info(`🔄 STARTING RETRY ATTEMPT ${sessionInfo.retryCount + 1}/${this.maxRetries}`);
       await this.startActualStream(sessionId, sessionInfo, request, callback);
     }, this.retryDelay);
   }
 
   private async startActualStream(sessionId: string, sessionInfo: SessionInfo, request: StreamingRequest, callback: StreamRequestCallback): Promise<void> {
+    this.log.info(`🚀 START ACTUAL STREAM: SessionID=${sessionId}, Attempt=${sessionInfo.retryCount + 1}/${this.maxRetries}`);
+    
     try {
       const authenticatedUrl = `rtsp://${encodeURIComponent(this.user)}:${encodeURIComponent(this.pass)}@${this.streamUrl.replace('rtsp://', '')}`;
+      const safeUrl = authenticatedUrl.replace(this.pass, '***');
       
-      if (this.debugMode) {
-        this.log.info(`🎬 Starting actual stream (attempt ${sessionInfo.retryCount + 1}/${this.maxRetries})`);
-      }
+      this.log.info(`🔗 RTSP URL: ${safeUrl}`);
+      this.log.info(`🎯 Target: ${sessionInfo.address}:${sessionInfo.videoPort}`);
+      this.log.info(`📐 Video config: ${sessionInfo.videoWidth}x${sessionInfo.videoHeight}, ${sessionInfo.videoBitrate}k, ${sessionInfo.videoFPS}fps`);
       
       // Check if ffmpeg path exists and find alternative
+      this.log.info(`🔧 Checking FFmpeg path: ${ffmpegPath}`);
       let actualFfmpegPath = ffmpegPath;
       if (!existsSync(ffmpegPath)) {
-        this.log.warn('FFmpeg not found at:', ffmpegPath);
+        this.log.warn(`⚠️ FFmpeg not found at default path: ${ffmpegPath}`);
         const systemPaths = ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg'];
         for (const path of systemPaths) {
+          this.log.info(`🔍 Trying alternative: ${path}`);
           if (path === 'ffmpeg' || existsSync(path)) {
             actualFfmpegPath = path;
-            if (this.debugMode) {
-              this.log.debug('Using alternative FFmpeg path:', actualFfmpegPath);
-            }
+            this.log.info(`✅ Using FFmpeg at: ${actualFfmpegPath}`);
             break;
           }
         }
+      } else {
+        this.log.info(`✅ FFmpeg found at default path`);
       }
       
       const ffmpegArgs = [
@@ -433,26 +479,28 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
         arg.includes(this.pass) ? arg.replace(this.pass, '***') : arg
       );
       
-      if (this.debugMode) {
-        this.log.info('🔧 FFmpeg command:', actualFfmpegPath, safeArgs.join(' '));
-        this.log.info(`📡 Streaming to: ${sessionInfo.address}:${sessionInfo.videoPort}`);
-      }
+      this.log.info('🔧 FFmpeg command:');
+      this.log.info(`   Executable: ${actualFfmpegPath}`);
+      this.log.info(`   Args: ${safeArgs.join(' ')}`);
+      this.log.info(`📡 Streaming target: ${sessionInfo.address}:${sessionInfo.videoPort}`);
 
       // Start ffmpeg process
+      this.log.info('🚀 Starting FFmpeg process...');
       const ffmpegProcess = spawn(actualFfmpegPath, ffmpegArgs);
       
       // Enhanced error handling
       ffmpegProcess.on('error', (error) => {
-        this.log.error('❌ FFmpeg process error:', error);
+        this.log.error(`❌ FFMPEG PROCESS ERROR: ${error.message}`);
         this.ongoingSessions.delete(sessionId);
         this.handleStreamRetry(sessionId, sessionInfo, request, callback, `FFmpeg error: ${error.message}`);
       });
       
       // Track if stream started successfully
       let streamStarted = false;
+      this.log.info(`⏱️ Setting ${this.connectionTimeout}ms timeout for stream startup...`);
       const startTimeout = setTimeout(() => {
         if (!streamStarted) {
-          this.log.warn('⚠️ Stream startup timeout');
+          this.log.warn(`⏰ STREAM STARTUP TIMEOUT (${this.connectionTimeout}ms) - killing process`);
           ffmpegProcess.kill('SIGTERM');
           this.handleStreamRetry(sessionId, sessionInfo, request, callback, 'Stream startup timeout');
         }
@@ -460,6 +508,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       
       ffmpegProcess.on('exit', (code, signal) => {
         clearTimeout(startTimeout);
+        this.log.info(`🔚 FFmpeg process exited: code=${code}, signal=${signal}, streamStarted=${streamStarted}`);
         if (signal === 'SIGTERM' || signal === 'SIGKILL') {
           this.log.debug(`FFmpeg process terminated (${signal})`);
         } else if (code && code !== 0 && code !== 255) {
@@ -476,15 +525,18 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       
       // Enhanced stderr monitoring
       let errorCount = 0;
+      this.log.info('👂 Starting FFmpeg stderr monitoring...');
       ffmpegProcess.stderr?.on('data', (data) => {
         const message = data.toString().trim();
+        
+        this.log.info(`📺 FFmpeg stderr: ${message}`);
         
         // Check for successful stream start indicators
         if (message.includes('Opening') || message.includes('Stream #') || message.includes('fps=')) {
           if (!streamStarted) {
             streamStarted = true;
             clearTimeout(startTimeout);
-            this.log.info('✅ Video stream started successfully');
+            this.log.info('✅ STREAM STARTED SUCCESSFULLY! (detected from FFmpeg output)');
             
             this.ongoingSessions.set(sessionId, ffmpegProcess);
             this.pendingSessions.delete(sessionId);
@@ -492,17 +544,14 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
           }
         }
         
-        // Log errors and important messages
-        if (this.debugMode || message.toLowerCase().includes('error') || errorCount < 3) {
-          this.log.debug('FFmpeg:', message);
-          errorCount++;
-        }
-        
         // Check for critical errors
         if (message.toLowerCase().includes('connection refused') || 
             message.toLowerCase().includes('network unreachable') ||
-            message.toLowerCase().includes('authentication failed')) {
+            message.toLowerCase().includes('authentication failed') ||
+            message.toLowerCase().includes('rtsp') && message.toLowerCase().includes('error')) {
+          this.log.error(`🚨 CRITICAL FFMPEG ERROR DETECTED: ${message}`);
           if (!streamStarted) {
+            this.log.error('🚨 Killing FFmpeg process due to critical error');
             ffmpegProcess.kill('SIGTERM');
             this.handleStreamRetry(sessionId, sessionInfo, request, callback, `RTSP error: ${message}`);
           }
@@ -510,18 +559,18 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       });
 
       // Also monitor stdout for additional info
-      if (this.debugMode) {
-        ffmpegProcess.stdout?.on('data', (data) => {
-          this.log.debug('FFmpeg stdout:', data.toString().trim());
-        });
-      }
+      this.log.info('👂 Starting FFmpeg stdout monitoring...');
+      ffmpegProcess.stdout?.on('data', (data) => {
+        this.log.info(`📺 FFmpeg stdout: ${data.toString().trim()}`);
+      });
       
       // Fallback success callback if no stderr data indicates success
+      this.log.info('⏱️ Setting 3-second fallback timeout...');
       setTimeout(() => {
         if (!streamStarted) {
           streamStarted = true;
           clearTimeout(startTimeout);
-          this.log.info('✅ Video stream assumed started (no errors detected)');
+          this.log.info('✅ STREAM ASSUMED STARTED (fallback - no errors detected after 3s)');
           
           this.ongoingSessions.set(sessionId, ffmpegProcess);
           this.pendingSessions.delete(sessionId);
@@ -530,21 +579,26 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       }, 3000); // 3 second fallback
 
     } catch (error) {
-      this.log.error('❌ Error starting actual stream:', error);
+      this.log.error('❌ EXCEPTION in startActualStream:', error);
       this.handleStreamRetry(sessionId, sessionInfo, request, callback, (error as Error).message);
     }
   }
 
   private stopStream(sessionId: string, callback: StreamRequestCallback): void {
-    this.log.info('Stopping video stream');
+    this.log.info(`🛑 STOP STREAM: SessionID=${sessionId}`);
     
     const ffmpegProcess = this.ongoingSessions.get(sessionId);
     if (ffmpegProcess) {
+      this.log.info(`🔪 Killing FFmpeg process for session ${sessionId}`);
       ffmpegProcess.kill('SIGTERM');
       this.ongoingSessions.delete(sessionId);
+      this.log.info(`✅ FFmpeg process terminated and removed from ongoing sessions`);
+    } else {
+      this.log.warn(`⚠️ No FFmpeg process found for session ${sessionId}`);
     }
     
     this.pendingSessions.delete(sessionId);
+    this.log.info(`🧹 Session ${sessionId} cleaned up from pending sessions`);
     callback();
   }
 }
