@@ -57,7 +57,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   private readonly maxRetries = 3;
   private readonly retryDelay = 2000; // 2 seconds
   private readonly connectionTimeout = 15000; // 15 seconds
-  private readonly debugMode = false; // Add debug mode
+  private readonly debugMode: boolean; // Debug mode from config
 
   controller?: CameraController;
 
@@ -72,9 +72,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     this.streamUrl = streamUrl;
     this.user = user;
     this.pass = pass;
-    
-    // Set debug mode (override the readonly default)
-    (this as any).debugMode = debugMode;
+    this.debugMode = debugMode; // Initialize debug mode
     
     // Always log initialization for visibility
     this.log.info('🎬 TwoNStreamingDelegate initializing...');
@@ -466,11 +464,16 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
         '-color_range', 'mpeg',
         '-preset', 'ultrafast', // Faster encoding
         '-tune', 'zerolatency', // Low latency
+        '-profile:v', 'baseline', // Better HomeKit compatibility
+        '-level:v', '3.1',        // Explicit level
         '-r', sessionInfo.videoFPS.toString(),
         '-s', `${sessionInfo.videoWidth}x${sessionInfo.videoHeight}`,
         '-b:v', `${sessionInfo.videoBitrate}k`,
         '-bufsize', `${sessionInfo.videoBitrate * 2}k`,
         '-maxrate', `${sessionInfo.videoBitrate}k`,
+        '-g', (sessionInfo.videoFPS * 2).toString(), // GOP every 2 seconds
+        '-keyint_min', sessionInfo.videoFPS.toString(), // Min GOP
+        '-sc_threshold', '0',     // Disable scene cuts
         '-payload_type', '99',
         '-ssrc', sessionInfo.videoSSRC.toString(),
         '-f', 'rtp',
@@ -532,11 +535,28 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       
       // Enhanced stderr monitoring
       let errorCount = 0;
+      let frameCount = 0;
       this.log.info('👂 Starting FFmpeg stderr monitoring...');
       ffmpegProcess.stderr?.on('data', (data) => {
         const message = data.toString().trim();
         
-        this.log.info(`📺 FFmpeg stderr: ${message}`);
+        // Log important messages but reduce spam
+        if (message.includes('Input #') || message.includes('Stream mapping') || 
+            message.includes('Output #') || message.includes('Stream #')) {
+          this.log.info(`📺 FFmpeg: ${message}`);
+        }
+        
+        // Log frame updates less frequently (every 10th frame or on significant changes)
+        if (message.includes('frame=')) {
+          frameCount++;
+          if (frameCount % 30 === 0 || message.includes('q=')) {  // Every 30th frame (~1 second at 30fps)
+            this.log.debug(`📺 FFmpeg progress: ${message}`);
+          }
+        } else if (message.includes('error') || message.includes('Error')) {
+          this.log.warn(`📺 FFmpeg stderr: ${message}`);
+        } else if (this.debugMode && !message.includes('frame=')) {
+          this.log.debug(`📺 FFmpeg: ${message}`);
+        }
         
         // Check for successful stream start indicators
         if (message.includes('Opening') || message.includes('Stream #') || message.includes('fps=')) {
