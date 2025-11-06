@@ -90,13 +90,14 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
         supportedCryptoSuites: [this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80],
         video: {
           resolutions: [
-            [320, 180, 30],
+            [640, 480, 15], // Native 2N intercom resolution - PREFERRED
             [320, 240, 15], // Apple Watch requires this configuration
+            [640, 480, 30], // Alternative VGA
+            [320, 180, 30],
             [320, 240, 30],
             [480, 270, 30],
             [480, 360, 30],
             [640, 360, 30],
-            [640, 480, 30],
             [1280, 720, 30],
             [1280, 960, 30],
             [1920, 1080, 30],
@@ -196,10 +197,10 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       audioCryptoSuite: request.audio.srtpCryptoSuite,
       audioSRTP: Buffer.concat([request.audio.srtp_key, request.audio.srtp_salt]),
       audioSSRC: audioSSRC,
-      videoWidth: 640, // VGA resolution
-      videoHeight: 480,
-      videoBitrate: 800, // Lower bitrate for VGA
-      videoFPS: 15,
+      videoWidth: 640,  // Native VGA resolution from 2N intercom
+      videoHeight: 480, // Native VGA resolution from 2N intercom  
+      videoBitrate: 500, // Optimized bitrate for VGA@15fps
+      videoFPS: 15,     // Native 15fps from 2N intercom
       videoCodec: 'libx264',
       
       // Retry tracking
@@ -278,17 +279,20 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
 
     this.log.info(`📋 Session found: ${sessionInfo.address}:${sessionInfo.videoPort}`);
 
-    // Update session info with stream request details if it's a StartStreamRequest
+    // Use native VGA@15fps parameters for optimal performance (no transcoding)
     if (request.type === StreamRequestTypes.START && 'video' in request) {
-      this.log.info(`🔧 Updating session with request params:`);
-      this.log.info(`   Resolution: ${sessionInfo.videoWidth}x${sessionInfo.videoHeight} → ${request.video.width || 640}x${request.video.height || 480}`);
-      this.log.info(`   Bitrate: ${sessionInfo.videoBitrate} → ${request.video.max_bit_rate || 1000} kbps`);
-      this.log.info(`   FPS: ${sessionInfo.videoFPS} → ${request.video.fps || 15}`);
+      this.log.info(`🔧 HomeKit requested:`);
+      this.log.info(`   Resolution: ${request.video.width || 'default'}x${request.video.height || 'default'}`);
+      this.log.info(`   Bitrate: ${request.video.max_bit_rate || 'default'} kbps`);
+      this.log.info(`   FPS: ${request.video.fps || 'default'}`);
       
-      sessionInfo.videoWidth = request.video.width || 640;
-      sessionInfo.videoHeight = request.video.height || 480;
-      sessionInfo.videoBitrate = request.video.max_bit_rate || 1000;
-      sessionInfo.videoFPS = request.video.fps || 15;
+      this.log.info(`🎯 Using native 2N parameters for optimal performance:`);
+      this.log.info(`   Resolution: 640x480 (VGA, no scaling needed)`);
+      this.log.info(`   Bitrate: 500 kbps (optimized for VGA@15fps)`);
+      this.log.info(`   FPS: 15 (native 2N intercom framerate)`);
+      
+      // Keep native VGA@15fps parameters - don't override with HomeKit request
+      // This eliminates transcoding and reduces CPU/bandwidth usage
     }
 
     // Reset retry tracking for new stream
