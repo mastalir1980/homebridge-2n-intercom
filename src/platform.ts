@@ -69,7 +69,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     // Generate all URLs based on 2N API standards
     this.config.doorOpenUrl = `http://${host}/api/switch/ctrl?switch=${switchNum}&action=on`;
     this.config.snapshotUrl = `http://${host}/api/camera/snapshot`;
-    this.config.streamUrl = `rtsp://${this.config.user}:${this.config.pass}@${host}:554/h264_stream`;
+    this.config.streamUrl = `rtsp://${host}:554/h264_stream`;
     this.config.doorbellEventsUrl = `http://${host}/api/call/status`;
     
     this.log.debug('🔗 Generated URLs:');
