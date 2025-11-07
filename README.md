@@ -22,46 +22,45 @@ Complete Homebridge plugin for 2N intercoms with door control, live video stream
 2. Go to **Plugins** tab
 3. Search for `homebridge-2n-intercom`
 4. Click **Install**
+5. **Configure via web UI** - No manual JSON editing needed! 🎉
 
 ### Manual Installation
 ```bash
 npm install -g homebridge-2n-intercom
 ```
 
-## Quick Start
+## Quick Setup (v2.0.0+)
 
-### 1. Basic Configuration (Door Switch Only)
-```json
-{
-  "platforms": [
-    {
-      "platform": "2NIntercom",
-      "name": "2N Intercom Switch",
-      "host": "192.168.1.100",
-      "user": "admin",
-      "pass": "password",
-      "doorOpenUrl": "http://192.168.1.100/api/switch/ctrl?switch=1&action=trigger"
-    }
-  ]
-}
-```
+### Web Configuration Interface ✨
+Starting with v2.0.0, configuration is **dramatically simplified**:
 
-### 2. Full Configuration (Door + Camera + Doorbell)
+1. **Install the plugin** via Homebridge UI
+2. **Add platform** using the web form:
+   - **Device Name**: `My 2N Intercom`
+   - **IP Address**: `192.168.1.100`
+   - **Username**: `admin`
+   - **Password**: `password`
+   - **Door Switch**: `1` (relay 1-4)
+   - **Enable Doorbell**: `Yes`
+   - **Video Quality**: `VGA (Recommended)`
+
+**That's it!** All URLs are auto-generated. No more manual configuration! 🚀
+
+### Legacy Manual Configuration (v1.x)
+For advanced users or legacy setups:
+
 ```json
 {
   "platforms": [
     {
       "platform": "2NIntercom",
       "name": "2N Intercom",
-      "host": "192.168.1.100",
+      "host": "192.168.1.100", 
       "user": "admin",
       "pass": "password",
-      "doorOpenUrl": "http://192.168.1.100/api/switch/ctrl?switch=1&action=trigger",
-      "snapshotUrl": "http://192.168.1.100/api/camera/snapshot",
-      "streamUrl": "rtsp://192.168.1.100:554/h264_stream",
+      "doorSwitchNumber": 1,
       "enableDoorbell": true,
-      "doorbellEventsUrl": "http://192.168.1.100/api/call/status",
-      "doorbellPollingInterval": 2000
+      "videoQuality": "vga"
     }
   ]
 }
@@ -69,18 +68,28 @@ npm install -g homebridge-2n-intercom
 
 ## Configuration Parameters
 
+### Web UI Parameters (v2.0.0+)
+All URLs are **auto-generated** from these simple settings:
+
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
-| `platform` | Yes | - | Must be `"2NIntercom"` |
-| `name` | No | `"2N Intercom"` | Display name for the platform |
+| `name` | Yes | - | Display name for your intercom |
 | `host` | Yes | - | IP address of your 2N intercom |
 | `user` | Yes | - | Username for intercom authentication |
 | `pass` | Yes | - | Password for intercom authentication |
+| `doorSwitchNumber` | No | `1` | Which relay controls door (1-4) |
+| `enableDoorbell` | No | `true` | Enable doorbell notifications |
+| `videoQuality` | No | `vga` | Stream quality: `vga` or `hd` |
+| `snapshotRefreshInterval` | No | `10` | Snapshot refresh rate (5-300s) |
+
+### Legacy Manual Parameters (v1.x)
+For backward compatibility and advanced setups:
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
 | `doorOpenUrl` | Yes | - | HTTP API endpoint to open the door |
-| `switchDuration` | No | `1000` | Duration (ms) switch stays on |
 | `snapshotUrl` | No | - | HTTP API endpoint for camera snapshots |
 | `streamUrl` | No | - | RTSP URL for live video streaming |
-| `enableDoorbell` | No | `false` | Enable doorbell notifications |
 | `doorbellEventsUrl` | No | - | HTTP API endpoint for doorbell events |
 | `doorbellPollingInterval` | No | `2000` | Doorbell polling frequency (ms) |
 
