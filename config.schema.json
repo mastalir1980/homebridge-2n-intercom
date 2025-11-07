@@ -74,6 +74,14 @@
           }
         ],
         "description": "Choose video stream quality. VGA is recommended for optimal performance."
+      },
+      "snapshotRefreshInterval": {
+        "title": "Snapshot Refresh Interval (seconds)",
+        "type": "number",
+        "default": 10,
+        "minimum": 5,
+        "maximum": 300,
+        "description": "How often HomeKit requests fresh snapshots (5-300 seconds). Lower values = more frequent updates but higher load."
       }
     },
     "required": ["name", "host", "user", "pass"]
@@ -107,7 +115,8 @@
       "expandable": true,
       "expanded": true,
       "items": [
-        "videoQuality"
+        "videoQuality",
+        "snapshotRefreshInterval"
       ]
     }
   ]

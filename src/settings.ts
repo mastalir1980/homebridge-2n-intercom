@@ -23,6 +23,7 @@ export interface TwoNIntercomConfig {
   doorSwitchNumber?: number; // Which relay to use (1-4), default: 1
   enableDoorbell?: boolean; // Enable doorbell functionality, default: true
   videoQuality?: 'vga' | 'hd'; // Video stream quality, default: 'vga'
+  snapshotRefreshInterval?: number; // Snapshot refresh interval in seconds, default: 10
   
   // Auto-generated internal URLs (not user-configurable)
   doorOpenUrl?: string; // Auto-generated from host and doorSwitchNumber

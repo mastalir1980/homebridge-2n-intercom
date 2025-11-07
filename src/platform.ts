@@ -40,6 +40,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     this.config.doorSwitchNumber = this.config.doorSwitchNumber || 1;
     this.config.enableDoorbell = this.config.enableDoorbell !== false; // Default true
     this.config.videoQuality = this.config.videoQuality || 'vga';
+    this.config.snapshotRefreshInterval = this.config.snapshotRefreshInterval || 10;
     this.config.switchDuration = 1000; // Fixed 1 second
     this.config.doorbellPollingInterval = 2000; // Fixed 2 seconds
     
@@ -90,8 +91,17 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
   }
 
   private createSwitchAccessory() {
-    const uuid = this.api.hap.uuid.generate((this.config.name || '2N Intercom') + ' Switch');
-    const existingSwitchAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
+    // Try to find accessory with legacy UUID first (for backward compatibility)
+    const legacySwitchUuid = this.api.hap.uuid.generate(this.config.host + '-switch');
+    let existingSwitchAccessory = this.accessories.find(accessory => accessory.UUID === legacySwitchUuid);
+    
+    // If not found with legacy UUID, try new UUID format
+    if (!existingSwitchAccessory) {
+      const uuid = this.api.hap.uuid.generate((this.config.name || '2N Intercom') + ' Switch');
+      existingSwitchAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
+    }
+    
+    const uuid = existingSwitchAccessory ? existingSwitchAccessory.UUID : this.api.hap.uuid.generate((this.config.name || '2N Intercom') + ' Switch');
 
     if (existingSwitchAccessory) {
       this.log.info('Restoring existing switch accessory from cache:', existingSwitchAccessory.displayName);
@@ -126,8 +136,17 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
   }
 
   private createCameraAccessory() {
-    const cameraUuid = this.api.hap.uuid.generate((this.config.name || '2N Intercom') + ' Camera');
-    const existingCameraAccessory = this.accessories.find(accessory => accessory.UUID === cameraUuid);
+    // Try to find accessory with legacy UUID first (for backward compatibility)  
+    const legacyCameraUuid = this.api.hap.uuid.generate(this.config.host + '-camera');
+    let existingCameraAccessory = this.accessories.find(accessory => accessory.UUID === legacyCameraUuid);
+    
+    // If not found with legacy UUID, try new UUID format
+    if (!existingCameraAccessory) {
+      const cameraUuid = this.api.hap.uuid.generate((this.config.name || '2N Intercom') + ' Camera');
+      existingCameraAccessory = this.accessories.find(accessory => accessory.UUID === cameraUuid);
+    }
+    
+    const cameraUuid = existingCameraAccessory ? existingCameraAccessory.UUID : this.api.hap.uuid.generate((this.config.name || '2N Intercom') + ' Camera');
 
     if (existingCameraAccessory) {
       this.log.info('Restoring existing camera accessory from cache:', existingCameraAccessory.displayName);
@@ -143,6 +162,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorbellEventsUrl: this.config.doorbellEventsUrl,
         doorbellPollingInterval: this.config.doorbellPollingInterval,
         videoQuality: this.config.videoQuality,
+        snapshotRefreshInterval: this.config.snapshotRefreshInterval,
       };
 
       new TwoNIntercomAccessory(this, existingCameraAccessory);
@@ -162,6 +182,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorbellEventsUrl: this.config.doorbellEventsUrl,
         doorbellPollingInterval: this.config.doorbellPollingInterval,
         videoQuality: this.config.videoQuality,
+        snapshotRefreshInterval: this.config.snapshotRefreshInterval,
       };
 
       new TwoNIntercomAccessory(this, cameraAccessory);
