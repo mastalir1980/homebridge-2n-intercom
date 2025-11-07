@@ -43,6 +43,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     this.config.snapshotRefreshInterval = this.config.snapshotRefreshInterval || 10;
     this.config.deviceType = this.config.deviceType || 'garage';
     this.config.protocol = this.config.protocol || 'https';
+    this.config.verifySSL = this.config.verifySSL !== undefined ? this.config.verifySSL : false;
     this.config.switchDuration = 1000; // Fixed 1 second
     this.config.doorbellPollingInterval = 2000; // Fixed 2 seconds
     
@@ -112,6 +113,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorOpenUrl: this.config.doorOpenUrl,
         switchDuration: this.config.switchDuration,
         deviceType: this.config.deviceType,
+        verifySSL: this.config.verifySSL,
         type: 'switch',
       };
 
@@ -128,6 +130,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorOpenUrl: this.config.doorOpenUrl,
         switchDuration: this.config.switchDuration,
         deviceType: this.config.deviceType,
+        verifySSL: this.config.verifySSL,
         type: 'switch',
       };
 
@@ -164,6 +167,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorbellPollingInterval: this.config.doorbellPollingInterval,
         videoQuality: this.config.videoQuality,
         snapshotRefreshInterval: this.config.snapshotRefreshInterval,
+        verifySSL: this.config.verifySSL,
       };
 
       new TwoNIntercomAccessory(this, existingCameraAccessory);
@@ -184,6 +188,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorbellPollingInterval: this.config.doorbellPollingInterval,
         videoQuality: this.config.videoQuality,
         snapshotRefreshInterval: this.config.snapshotRefreshInterval,
+        verifySSL: this.config.verifySSL,
       };
 
       new TwoNIntercomAccessory(this, cameraAccessory);

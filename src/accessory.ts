@@ -1,5 +1,6 @@
 import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
 import axios from 'axios';
+import https from 'https';
 import { TwoNIntercomPlatform } from './platform';
 import { TwoNStreamingDelegate } from './streamingDelegate';
 
@@ -17,6 +18,32 @@ export class TwoNIntercomAccessory {
   private isPolling = false;
   private pollingInterval?: NodeJS.Timeout;
   private lastCallState = false;
+
+  /**
+   * Create axios configuration with SSL support for self-signed certificates
+   */
+  private createAxiosConfig(url: string): any {
+    const config: any = {
+      auth: {
+        username: this.accessory.context.device.user,
+        password: this.accessory.context.device.pass,
+      },
+      timeout: 5000,
+    };
+
+    // For HTTPS URLs, configure SSL certificate verification based on user preference
+    if (url.startsWith('https://')) {
+      const verifySSL = this.accessory.context.device.verifySSL !== undefined 
+        ? this.accessory.context.device.verifySSL 
+        : false; // Default to false for 2N intercoms with self-signed certs
+
+      config.httpsAgent = new https.Agent({
+        rejectUnauthorized: verifySSL,
+      });
+    }
+
+    return config;
+  }
 
   constructor(
     private readonly platform: TwoNIntercomPlatform,
@@ -46,7 +73,8 @@ export class TwoNIntercomAccessory {
         accessory.context.device.user,
         accessory.context.device.pass,
         false, // Debug mode off in production
-        accessory.context.device.videoQuality || 'vga' // Video quality from config
+        accessory.context.device.videoQuality || 'vga', // Video quality from config
+        accessory.context.device.verifySSL !== undefined ? accessory.context.device.verifySSL : false // SSL verification
       );
 
       // Configure camera controller  
@@ -324,13 +352,8 @@ export class TwoNIntercomAccessory {
     try {
       this.platform.log.info('Unlocking door...');
       
-      await axios.get(this.accessory.context.device.doorOpenUrl, {
-        auth: {
-          username: this.accessory.context.device.user,
-          password: this.accessory.context.device.pass,
-        },
-        timeout: 5000,
-      });
+      const doorOpenUrl = this.accessory.context.device.doorOpenUrl;
+      await axios.get(doorOpenUrl, this.createAxiosConfig(doorOpenUrl));
 
       this.platform.log.debug('Door unlocked successfully');
     } catch (error) {
@@ -445,13 +468,8 @@ export class TwoNIntercomAccessory {
     try {
       const config = this.accessory.context.device;
       
-      const response = await axios.get(config.doorbellEventsUrl!, {
-        auth: {
-          username: config.user,
-          password: config.pass,
-        },
-        timeout: 5000,
-      });
+      const doorbellEventsUrl = config.doorbellEventsUrl!;
+      const response = await axios.get(doorbellEventsUrl, this.createAxiosConfig(doorbellEventsUrl));
 
       // Different 2N models return different formats
       let isCallActive = false;

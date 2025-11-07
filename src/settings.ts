@@ -26,6 +26,7 @@ export interface TwoNIntercomConfig {
   snapshotRefreshInterval?: number; // Snapshot refresh interval in seconds, default: 10
   deviceType?: 'garage' | 'lock' | 'switch' | 'outlet'; // How device appears in HomeKit, default: 'garage'
   protocol?: 'http' | 'https'; // API protocol, default: 'https'
+  verifySSL?: boolean; // SSL certificate verification, default: false
   
   // Auto-generated internal URLs (not user-configurable)
   doorOpenUrl?: string; // Auto-generated from host and doorSwitchNumber

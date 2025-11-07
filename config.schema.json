@@ -123,6 +123,12 @@
         ],
         "description": "Protocol for API communication. HTTPS is recommended for security."
       },
+      "verifySSL": {
+        "title": "Verify SSL Certificates (HTTPS only)",
+        "type": "boolean",
+        "default": false,
+        "description": "Enable SSL certificate verification. Keep disabled for self-signed certificates (typical for 2N intercoms)."
+      },
       "snapshotRefreshInterval": {
         "title": "Snapshot Refresh Interval (seconds)",
         "type": "number",
@@ -156,7 +162,8 @@
         "doorSwitchNumber",
         "enableDoorbell",
         "deviceType",
-        "protocol"
+        "protocol",
+        "verifySSL"
       ]
     },
     {

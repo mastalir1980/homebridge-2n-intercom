@@ -15,6 +15,7 @@ import {
   Logger,
 } from 'homebridge';
 import axios from 'axios';
+import https from 'https';
 import { spawn, ChildProcess } from 'child_process';
 import { existsSync } from 'fs';
 const ffmpegPath = require('ffmpeg-for-homebridge');
@@ -61,6 +62,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   private readonly fallbackTimeout = 2000; // New: faster fallback (reduced from 3s)
   private readonly debugMode: boolean; // Debug mode from config
   private readonly videoQuality: 'vga' | 'hd'; // Video quality setting
+  private readonly verifySSL: boolean; // SSL certificate verification
 
   controller?: CameraController;
 
@@ -68,7 +70,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   pendingSessions: Map<string, SessionInfo> = new Map();
   ongoingSessions: Map<string, ChildProcess> = new Map();
 
-  constructor(hap: HAP, log: Logger, snapshotUrl: string, streamUrl: string, user: string, pass: string, debugMode: boolean = false, videoQuality: 'vga' | 'hd' = 'vga') {
+  constructor(hap: HAP, log: Logger, snapshotUrl: string, streamUrl: string, user: string, pass: string, debugMode: boolean = false, videoQuality: 'vga' | 'hd' = 'vga', verifySSL: boolean = false) {
     this.hap = hap;
     this.log = log;
     this.snapshotUrl = snapshotUrl;
@@ -77,8 +79,28 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     this.pass = pass;
     this.debugMode = debugMode; // Initialize debug mode
     this.videoQuality = videoQuality; // Initialize video quality
+    this.verifySSL = verifySSL; // Initialize SSL verification
     
     // TwoNStreamingDelegate initialized
+  }
+
+  /**
+   * Create axios configuration with SSL support for self-signed certificates
+   */
+  private createAxiosConfig(url: string, verifySSL: boolean = false): any {
+    const config: any = {
+      responseType: 'arraybuffer',
+      timeout: 5000,
+    };
+
+    // For HTTPS URLs, configure SSL certificate verification based on user preference
+    if (url.startsWith('https://')) {
+      config.httpsAgent = new https.Agent({
+        rejectUnauthorized: verifySSL, // Default false for 2N intercoms with self-signed certs
+      });
+    }
+
+    return config;
   }
 
   private createCameraControllerOptions(): CameraControllerOptions {
@@ -133,14 +155,17 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       // Build snapshot URL with required parameters
       const snapshotUrl = new URL(this.snapshotUrl);
       snapshotUrl.searchParams.set('width', request.width.toString());
-      snapshotUrl.searchParams.set('height', request.height.toString());      const response = await axios.get(snapshotUrl.toString(), {
-        auth: {
-          username: this.user,
-          password: this.pass,
-        },
-        responseType: 'arraybuffer',
-        timeout: 10000,
-      });
+      snapshotUrl.searchParams.set('height', request.height.toString());
+
+      const snapshotUrlString = snapshotUrl.toString();
+      const axiosConfig = this.createAxiosConfig(snapshotUrlString, this.verifySSL);
+      axiosConfig.auth = {
+        username: this.user,
+        password: this.pass,
+      };
+      axiosConfig.timeout = 10000;
+
+      const response = await axios.get(snapshotUrlString, axiosConfig);
 
       callback(undefined, Buffer.from(response.data));
     } catch (error) {
