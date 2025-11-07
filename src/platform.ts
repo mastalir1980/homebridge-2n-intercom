@@ -32,101 +32,92 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
 
     // Validate required configuration
     if (!this.config.host || !this.config.user || !this.config.pass) {
-      this.log.error('Missing required configuration: host, user, pass');
+      this.log.error('Missing required configuration: host, user, and pass are required');
       return;
     }
 
-    if (!this.config.doorOpenUrl) {
-      this.log.error('Missing required configuration: doorOpenUrl');
-      return;
-    }
-
-    // Camera URLs are optional - if not provided, only switch will be available
-    if (!this.config.snapshotUrl || !this.config.streamUrl) {
-            this.log.debug('Camera streaming enabled');
-    }
-
-    /* Future features validation commented out
-    if (!this.config.doorStatusUrl) {
-      this.log.error('Missing required configuration: doorStatusUrl');
-      return;
-    }
-    */
+    // Set defaults for optional parameters
+    this.config.doorSwitchNumber = this.config.doorSwitchNumber || 1;
+    this.config.enableDoorbell = this.config.enableDoorbell !== false; // Default true
+    this.config.videoQuality = this.config.videoQuality || 'vga';
+    this.config.switchDuration = 1000; // Fixed 1 second
+    this.config.doorbellPollingInterval = 2000; // Fixed 2 seconds
+    
+    // Auto-generate URLs from host IP
+    this.generateUrls();
+    
+    this.log.info('🏠 2N Intercom Platform initialized');
+    this.log.info(`📡 Device: ${this.config.host}`);
+    this.log.info(`🚪 Door relay: ${this.config.doorSwitchNumber}`);
+    this.log.info(`🔔 Doorbell: ${this.config.enableDoorbell ? 'enabled' : 'disabled'}`);
+    this.log.info(`📺 Video quality: ${this.config.videoQuality.toUpperCase()}`);
 
     // When this event is fired it means Homebridge has restored all cached accessories from disk.
-    // Dynamic Platform plugins should only register new accessories after this event was fired,
-    // in order to ensure they weren't added to homebridge already. This event can also be used
-    // to start discovery of new accessories.
     this.api.on('didFinishLaunching', () => {
-      log.debug('Executed didFinishLaunching callback');
-      // run the method to discover / register your devices as accessories
+      this.log.debug('Executed didFinishLaunching callback');
       this.discoverDevices();
     });
   }
 
   /**
-   * This function is invoked when homebridge restores cached accessories from disk at startup.
-   * It should be used to setup event handlers for characteristics and update respective values.
+   * Auto-generate URLs based on host IP address
    */
+  private generateUrls(): void {
+    const host = this.config.host;
+    const switchNum = this.config.doorSwitchNumber;
+    
+    // Generate all URLs based on 2N API standards
+    this.config.doorOpenUrl = `http://${host}/api/switch/ctrl?switch=${switchNum}&action=on`;
+    this.config.snapshotUrl = `http://${host}/api/camera/snapshot`;
+    this.config.streamUrl = `rtsp://${this.config.user}:${this.config.pass}@${host}:554/h264_stream`;
+    this.config.doorbellEventsUrl = `http://${host}/api/call/status`;
+    
+    this.log.debug('🔗 Generated URLs:');
+    this.log.debug(`  Door: ${this.config.doorOpenUrl}`);
+    this.log.debug(`  Camera: ${this.config.snapshotUrl}`);
+    this.log.debug(`  Stream: rtsp://${this.config.user}:***@${host}:554/h264_stream`);
+    this.log.debug(`  Doorbell: ${this.config.doorbellEventsUrl}`);
+  }
+
   configureAccessory(accessory: PlatformAccessory) {
     this.log.info('Loading accessory from cache:', accessory.displayName);
-
-    // add the restored accessory to the accessories cache so we can track if it has already been registered
     this.accessories.push(accessory);
   }
 
-  /**
-   * This is an example method showing how to register discovered accessories.
-   * Accessories must only be registered once, previously created accessories
-   * must not be registered again to prevent "duplicate UUID" errors.
-   */
   discoverDevices() {
-    // Create two separate accessories for better HomeKit compatibility
     this.createSwitchAccessory();
-    
-    // Only create camera accessory if URLs are provided
-    if (this.config.snapshotUrl && this.config.streamUrl) {
-      this.createCameraAccessory();
-    }
+    this.createCameraAccessory();
   }
 
   private createSwitchAccessory() {
-    // Generate UUID for switch accessory
-    const switchUuid = this.api.hap.uuid.generate(this.config.host + '-switch');
-    const existingSwitchAccessory = this.accessories.find(accessory => accessory.UUID === switchUuid);
+    const uuid = this.api.hap.uuid.generate((this.config.name || '2N Intercom') + ' Switch');
+    const existingSwitchAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
 
     if (existingSwitchAccessory) {
       this.log.info('Restoring existing switch accessory from cache:', existingSwitchAccessory.displayName);
       
-      // Update context
       existingSwitchAccessory.context.device = {
         host: this.config.host,
         user: this.config.user,
         pass: this.config.pass,
         doorOpenUrl: this.config.doorOpenUrl,
-        switchDuration: this.config.switchDuration || 1000,
+        switchDuration: this.config.switchDuration,
         type: 'switch',
-        enableDoorbell: this.config.enableDoorbell,
-        doorbellEventsUrl: this.config.doorbellEventsUrl,
-        doorbellPollingInterval: this.config.doorbellPollingInterval,
       };
 
       new TwoNIntercomAccessory(this, existingSwitchAccessory);
     } else {
       this.log.info('Adding new switch accessory:', (this.config.name || '2N Intercom') + ' Switch');
       
-      const switchAccessory = new this.api.platformAccessory((this.config.name || '2N Intercom') + ' Switch', switchUuid);
+      const switchAccessory = new this.api.platformAccessory((this.config.name || '2N Intercom') + ' Switch', uuid);
       
       switchAccessory.context.device = {
         host: this.config.host,
         user: this.config.user,
         pass: this.config.pass,
         doorOpenUrl: this.config.doorOpenUrl,
-        switchDuration: this.config.switchDuration || 1000,
+        switchDuration: this.config.switchDuration,
         type: 'switch',
-        enableDoorbell: this.config.enableDoorbell,
-        doorbellEventsUrl: this.config.doorbellEventsUrl,
-        doorbellPollingInterval: this.config.doorbellPollingInterval,
       };
 
       new TwoNIntercomAccessory(this, switchAccessory);
@@ -135,14 +126,12 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
   }
 
   private createCameraAccessory() {
-    // Generate UUID for camera accessory  
-    const cameraUuid = this.api.hap.uuid.generate(this.config.host + '-camera');
+    const cameraUuid = this.api.hap.uuid.generate((this.config.name || '2N Intercom') + ' Camera');
     const existingCameraAccessory = this.accessories.find(accessory => accessory.UUID === cameraUuid);
 
     if (existingCameraAccessory) {
       this.log.info('Restoring existing camera accessory from cache:', existingCameraAccessory.displayName);
       
-      // Update context
       existingCameraAccessory.context.device = {
         host: this.config.host,
         user: this.config.user,
@@ -153,6 +142,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         enableDoorbell: this.config.enableDoorbell,
         doorbellEventsUrl: this.config.doorbellEventsUrl,
         doorbellPollingInterval: this.config.doorbellPollingInterval,
+        videoQuality: this.config.videoQuality,
       };
 
       new TwoNIntercomAccessory(this, existingCameraAccessory);
@@ -171,6 +161,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         enableDoorbell: this.config.enableDoorbell,
         doorbellEventsUrl: this.config.doorbellEventsUrl,
         doorbellPollingInterval: this.config.doorbellPollingInterval,
+        videoQuality: this.config.videoQuality,
       };
 
       new TwoNIntercomAccessory(this, cameraAccessory);

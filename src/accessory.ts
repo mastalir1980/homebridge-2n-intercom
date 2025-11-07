@@ -53,7 +53,8 @@ export class TwoNIntercomAccessory {
         accessory.context.device.streamUrl,
         accessory.context.device.user,
         accessory.context.device.pass,
-        true // Enable debug mode for retry logging
+        false, // Debug mode off in production
+        accessory.context.device.videoQuality || 'vga' // Video quality from config
       );
 
       // Configure camera controller  

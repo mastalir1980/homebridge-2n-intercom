@@ -60,6 +60,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   private readonly rtspTestTimeout = 3000; // New: quick RTSP test (reduced from 8s)
   private readonly fallbackTimeout = 2000; // New: faster fallback (reduced from 3s)
   private readonly debugMode: boolean; // Debug mode from config
+  private readonly videoQuality: 'vga' | 'hd'; // Video quality setting
 
   controller?: CameraController;
 
@@ -67,7 +68,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   pendingSessions: Map<string, SessionInfo> = new Map();
   ongoingSessions: Map<string, ChildProcess> = new Map();
 
-  constructor(hap: HAP, log: Logger, snapshotUrl: string, streamUrl: string, user: string, pass: string, debugMode: boolean = false) {
+  constructor(hap: HAP, log: Logger, snapshotUrl: string, streamUrl: string, user: string, pass: string, debugMode: boolean = false, videoQuality: 'vga' | 'hd' = 'vga') {
     this.hap = hap;
     this.log = log;
     this.snapshotUrl = snapshotUrl;
@@ -75,6 +76,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     this.user = user;
     this.pass = pass;
     this.debugMode = debugMode; // Initialize debug mode
+    this.videoQuality = videoQuality; // Initialize video quality
     
     // Log only essential initialization info
     this.log.info('🎬 TwoNStreamingDelegate initialized with optimized performance settings');
@@ -195,10 +197,10 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       audioCryptoSuite: request.audio.srtpCryptoSuite,
       audioSRTP: Buffer.concat([request.audio.srtp_key, request.audio.srtp_salt]),
       audioSSRC: audioSSRC,
-      videoWidth: 640,  // Native VGA resolution from 2N intercom
-      videoHeight: 480, // Native VGA resolution from 2N intercom  
-      videoBitrate: 500, // Optimized bitrate for VGA@15fps
-      videoFPS: 15,     // Native 15fps from 2N intercom
+      videoWidth: this.videoQuality === 'vga' ? 640 : 1280,
+      videoHeight: this.videoQuality === 'vga' ? 480 : 720,  
+      videoBitrate: this.videoQuality === 'vga' ? 500 : 1000, 
+      videoFPS: this.videoQuality === 'vga' ? 15 : 30,
       videoCodec: 'libx264',
       
       // Retry tracking

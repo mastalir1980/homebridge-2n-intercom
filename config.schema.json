@@ -1,0 +1,114 @@
+{
+  "pluginAlias": "TwoNIntercom",
+  "pluginType": "platform",
+  "singular": true,
+  "headerDisplay": "Homebridge 2N Intercom Plugin - Complete solution for 2N intercoms with door control, video streaming, and doorbell notifications",
+  "footerDisplay": "For help and support visit: [GitHub Repository](https://github.com/mastalir1980/homebridge-2n-intercom)",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Platform Name",
+        "type": "string",
+        "default": "2N Intercom",
+        "required": true,
+        "description": "Name for this platform instance"
+      },
+      "host": {
+        "title": "2N Intercom IP Address",
+        "type": "string",
+        "format": "ipv4",
+        "required": true,
+        "placeholder": "192.168.1.100",
+        "description": "IP address of your 2N intercom device"
+      },
+      "user": {
+        "title": "Username",
+        "type": "string",
+        "required": true,
+        "placeholder": "admin",
+        "description": "Username for 2N intercom authentication"
+      },
+      "pass": {
+        "title": "Password",
+        "type": "string",
+        "required": true,
+        "description": "Password for 2N intercom authentication"
+      },
+      "doorSwitchNumber": {
+        "title": "Door Relay Number",
+        "type": "integer",
+        "default": 1,
+        "minimum": 1,
+        "maximum": 4,
+        "required": true,
+        "oneOf": [
+          { "title": "Relay 1", "enum": [1] },
+          { "title": "Relay 2", "enum": [2] },
+          { "title": "Relay 3", "enum": [3] },
+          { "title": "Relay 4", "enum": [4] }
+        ],
+        "description": "Select which relay controls your door lock (1-4)"
+      },
+      "enableDoorbell": {
+        "title": "Enable Doorbell Notifications",
+        "type": "boolean",
+        "default": true,
+        "description": "Enable doorbell button press notifications in HomeKit"
+      },
+      "videoQuality": {
+        "title": "Video Stream Quality",
+        "type": "string",
+        "default": "vga",
+        "required": true,
+        "oneOf": [
+          {
+            "title": "VGA (640x480@15fps) - Recommended",
+            "enum": ["vga"],
+            "description": "Native 2N resolution, fastest startup, lowest bandwidth"
+          },
+          {
+            "title": "HD Standard (Apple Default)",
+            "enum": ["hd"],
+            "description": "Standard Apple HomeKit quality, higher bandwidth"
+          }
+        ],
+        "description": "Choose video stream quality. VGA is recommended for optimal performance."
+      }
+    },
+    "required": ["name", "host", "user", "pass"]
+  },
+  "layout": [
+    {
+      "type": "section",
+      "title": "Basic Configuration",
+      "expandable": true,
+      "expanded": true,
+      "items": [
+        "name",
+        "host",
+        "user",
+        "pass"
+      ]
+    },
+    {
+      "type": "section", 
+      "title": "Device Settings",
+      "expandable": true,
+      "expanded": true,
+      "items": [
+        "doorSwitchNumber",
+        "enableDoorbell"
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Video Configuration", 
+      "expandable": true,
+      "expanded": true,
+      "items": [
+        "videoQuality"
+      ]
+    }
+  ]
+}
