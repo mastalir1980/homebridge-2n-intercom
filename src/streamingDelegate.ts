@@ -78,8 +78,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     this.debugMode = debugMode; // Initialize debug mode
     this.videoQuality = videoQuality; // Initialize video quality
     
-    // Log only essential initialization info
-    this.log.info('🎬 TwoNStreamingDelegate initialized with optimized performance settings');
+    // TwoNStreamingDelegate initialized
   }
 
   private createCameraControllerOptions(): CameraControllerOptions {
@@ -90,7 +89,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
         supportedCryptoSuites: [this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80],
         video: {
           resolutions: [
-            [640, 480, 15], // Native 2N intercom resolution - PREFERRED
+            [640, 480, 15], // PREFERRED for the bandwidth/performance balance
             [320, 240, 15], // Apple Watch requires this configuration
             [640, 480, 30], // Alternative VGA
             [320, 180, 30],
@@ -130,17 +129,11 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   }
 
   async handleSnapshotRequest(request: SnapshotRequest, callback: SnapshotRequestCallback): Promise<void> {
-    this.log.info(`📸 SNAPSHOT REQUEST: ${request.width}x${request.height}`);
-    
     try {
       // Build snapshot URL with required parameters
       const snapshotUrl = new URL(this.snapshotUrl);
       snapshotUrl.searchParams.set('width', request.width.toString());
-      snapshotUrl.searchParams.set('height', request.height.toString());
-      
-      this.log.info(`📸 Requesting snapshot from: ${snapshotUrl.toString().replace(this.pass, '***')}`);
-      
-      const response = await axios.get(snapshotUrl.toString(), {
+      snapshotUrl.searchParams.set('height', request.height.toString());      const response = await axios.get(snapshotUrl.toString(), {
         auth: {
           username: this.user,
           password: this.pass,
@@ -149,10 +142,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
         timeout: 10000,
       });
 
-      this.log.info(`📸 Snapshot received: ${response.data.byteLength} bytes, status: ${response.status}`);
-
       callback(undefined, Buffer.from(response.data));
-      this.log.info('✅ Snapshot delivered successfully');
     } catch (error) {
       this.log.error('❌ SNAPSHOT ERROR:', error);
       callback(error as Error);
@@ -163,7 +153,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     const sessionId = request.sessionID;
     const targetAddress = request.targetAddress;
 
-    this.log.info(`🔧 PREPARE STREAM: SessionID=${sessionId}, Target=${targetAddress}`);
+
 
     // Generate unique SSRC values for each session
     const videoSSRC = this.generateSSRC();
@@ -224,7 +214,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   async handleStreamRequest(request: StreamingRequest, callback: StreamRequestCallback): Promise<void> {
     const sessionId = request.sessionID;
     
-    this.log.info(`🎬 STREAM REQUEST: SessionID=${sessionId}, Type=${request.type === StreamRequestTypes.START ? 'START' : request.type === StreamRequestTypes.STOP ? 'STOP' : 'RECONFIGURE'}`);
+
 
     try {
       switch (request.type) {
@@ -268,7 +258,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   }
 
   private async startStream(sessionId: string, request: StreamingRequest, callback: StreamRequestCallback): Promise<void> {
-    this.log.info(`🎬 START STREAM METHOD: SessionID=${sessionId}`);
+
     
     const sessionInfo = this.pendingSessions.get(sessionId);
     if (!sessionInfo) {
@@ -292,7 +282,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     this.log.info(`📺 Starting stream: ${sessionInfo.videoWidth}x${sessionInfo.videoHeight} @ ${sessionInfo.videoFPS}fps`);
     
     // Test RTSP connection before starting stream
-    this.log.info(`🔍 Testing RTSP connection...`);
+
     const connectionOk = await this.testRTSPConnection();
     if (!connectionOk) {
       this.log.error('❌ RTSP CONNECTION TEST FAILED');
@@ -312,7 +302,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     try {
       const authenticatedUrl = `rtsp://${encodeURIComponent(this.user)}:${encodeURIComponent(this.pass)}@${this.streamUrl.replace('rtsp://', '')}`;
       const safeUrl = authenticatedUrl.replace(this.pass, '***');
-      this.log.info(`🔗 Testing URL: ${safeUrl}`);
+
       
       let actualFfmpegPath = ffmpegPath;
       this.log.info(`🔧 FFmpeg path: ${ffmpegPath}`);
@@ -426,7 +416,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       const authenticatedUrl = `rtsp://${encodeURIComponent(this.user)}:${encodeURIComponent(this.pass)}@${this.streamUrl.replace('rtsp://', '')}`;
       const safeUrl = authenticatedUrl.replace(this.pass, '***');
       
-      this.log.info(`🔗 RTSP URL: ${safeUrl}`);
+
       this.log.info(`🎯 Target: ${sessionInfo.address}:${sessionInfo.videoPort}`);
       this.log.info(`📐 Video config: ${sessionInfo.videoWidth}x${sessionInfo.videoHeight}, ${sessionInfo.videoBitrate}k, ${sessionInfo.videoFPS}fps`);
       

@@ -73,11 +73,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     this.config.streamUrl = `rtsp://${host}:554/h264_stream`;
     this.config.doorbellEventsUrl = `http://${host}/api/call/status`;
     
-    this.log.debug('🔗 Generated URLs:');
-    this.log.debug(`  Door: ${this.config.doorOpenUrl}`);
-    this.log.debug(`  Camera: ${this.config.snapshotUrl}`);
-    this.log.debug(`  Stream: rtsp://${this.config.user}:***@${host}:554/h264_stream`);
-    this.log.debug(`  Doorbell: ${this.config.doorbellEventsUrl}`);
+
   }
 
   configureAccessory(accessory: PlatformAccessory) {
