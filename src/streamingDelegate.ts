@@ -76,13 +76,8 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     this.pass = pass;
     this.debugMode = debugMode; // Initialize debug mode
     
-    // Always log initialization for visibility
-    this.log.info('🎬 TwoNStreamingDelegate initializing...');
-    this.log.info(`📡 Stream URL: ${this.streamUrl}`);
-    this.log.info(`📷 Snapshot URL: ${this.snapshotUrl}`);
-    this.log.info(`🔧 Debug mode: ${this.debugMode ? 'ENABLED' : 'DISABLED'}`);
-    this.log.info(`⚡ Optimized timeouts: RTSP=${this.rtspTestTimeout}ms, Stream=${this.connectionTimeout}ms, Retry=${this.retryDelay}ms`);
-    this.log.info(`🚀 Fast startup config: max_retries=${this.maxRetries}, fallback=${this.fallbackTimeout}ms`);
+    // Log only essential initialization info
+    this.log.info('🎬 TwoNStreamingDelegate initialized with optimized performance settings');
   }
 
   private createCameraControllerOptions(): CameraControllerOptions {
@@ -284,16 +279,6 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
 
     // Use native VGA@15fps parameters for optimal performance (no transcoding)
     if (request.type === StreamRequestTypes.START && 'video' in request) {
-      this.log.info(`🔧 HomeKit requested:`);
-      this.log.info(`   Resolution: ${request.video.width || 'default'}x${request.video.height || 'default'}`);
-      this.log.info(`   Bitrate: ${request.video.max_bit_rate || 'default'} kbps`);
-      this.log.info(`   FPS: ${request.video.fps || 'default'}`);
-      
-      this.log.info(`🎯 Using native 2N parameters for optimal performance:`);
-      this.log.info(`   Resolution: 640x480 (VGA, no scaling needed)`);
-      this.log.info(`   Bitrate: 500 kbps (optimized for VGA@15fps)`);
-      this.log.info(`   FPS: 15 (native 2N intercom framerate)`);
-      
       // Keep native VGA@15fps parameters - don't override with HomeKit request
       // This eliminates transcoding and reduces CPU/bandwidth usage
     }
@@ -302,7 +287,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
     sessionInfo.retryCount = 0;
     sessionInfo.startTime = Date.now();
 
-    this.log.info(`🎯 FINAL STREAM CONFIG: ${sessionInfo.videoWidth}x${sessionInfo.videoHeight}, ${sessionInfo.videoBitrate} kbps, ${sessionInfo.videoFPS} fps`);
+    this.log.info(`📺 Starting stream: ${sessionInfo.videoWidth}x${sessionInfo.videoHeight} @ ${sessionInfo.videoFPS}fps`);
     
     // Test RTSP connection before starting stream
     this.log.info(`🔍 Testing RTSP connection...`);
@@ -357,7 +342,9 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
           '-'
         ];
 
-        this.log.info(`🚀 Starting FFmpeg test process with args: ${testArgs.map(arg => arg.includes(this.pass) ? '***' : arg).join(' ')}`);
+        if (this.debugMode) {
+          this.log.debug(`🚀 Starting FFmpeg test process with args: ${testArgs.map(arg => arg.includes(this.pass) ? '***' : arg).join(' ')}`);
+        }
         const testProcess = spawn(actualFfmpegPath, testArgs);
         let testSuccessful = false;
 
@@ -442,7 +429,9 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       this.log.info(`📐 Video config: ${sessionInfo.videoWidth}x${sessionInfo.videoHeight}, ${sessionInfo.videoBitrate}k, ${sessionInfo.videoFPS}fps`);
       
       // Check if ffmpeg path exists and find alternative
-      this.log.info(`🔧 Checking FFmpeg path: ${ffmpegPath}`);
+      if (this.debugMode) {
+        this.log.debug(`🔧 Checking FFmpeg path: ${ffmpegPath}`);
+      }
       let actualFfmpegPath = ffmpegPath;
       if (!existsSync(ffmpegPath)) {
         this.log.warn(`⚠️ FFmpeg not found at default path: ${ffmpegPath}`);
@@ -494,13 +483,12 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
         arg.includes(this.pass) ? arg.replace(this.pass, '***') : arg
       );
       
-      this.log.info('🔧 FFmpeg command:');
-      this.log.info(`   Executable: ${actualFfmpegPath}`);
-      this.log.info(`   Args: ${safeArgs.join(' ')}`);
-      this.log.info(`📡 Streaming target: ${sessionInfo.address}:${sessionInfo.videoPort}`);
-
-      // Start ffmpeg process
-      this.log.info('🚀 Starting FFmpeg process...');
+      // Start ffmpeg process (log command only in debug mode)
+      if (this.debugMode) {
+        this.log.debug('🔧 FFmpeg command:');
+        this.log.debug(`   Executable: ${actualFfmpegPath}`);
+        this.log.debug(`   Args: ${safeArgs.join(' ')}`);
+      }
       const ffmpegProcess = spawn(actualFfmpegPath, ffmpegArgs);
       
       // Enhanced error handling
@@ -514,7 +502,9 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
       
       // Track if stream started successfully
       let streamStarted = false;
-      this.log.info(`⏱️ Setting optimized ${this.connectionTimeout}ms timeout for stream startup...`);
+      if (this.debugMode) {
+        this.log.debug(`⏱️ Setting ${this.connectionTimeout}ms timeout for stream startup...`);
+      }
       const startTimeout = setTimeout(() => {
         if (!streamStarted && !callbackCalled) {
           this.log.warn(`⏰ STREAM STARTUP TIMEOUT (${this.connectionTimeout}ms - optimized) - killing process`);
@@ -540,28 +530,15 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
         this.ongoingSessions.delete(sessionId);
       });
       
-      // Enhanced stderr monitoring
+      // Monitor FFmpeg output
       let errorCount = 0;
-      let frameCount = 0;
-      this.log.info('👂 Starting FFmpeg stderr monitoring...');
       ffmpegProcess.stderr?.on('data', (data) => {
         const message = data.toString().trim();
         
-        // Log important messages but reduce spam
-        if (message.includes('Input #') || message.includes('Stream mapping') || 
-            message.includes('Output #') || message.includes('Stream #')) {
-          this.log.info(`📺 FFmpeg: ${message}`);
-        }
-        
-        // Log frame updates less frequently (every 10th frame or on significant changes)
-        if (message.includes('frame=')) {
-          frameCount++;
-          if (frameCount % 30 === 0 || message.includes('q=')) {  // Every 30th frame (~1 second at 30fps)
-            this.log.debug(`📺 FFmpeg progress: ${message}`);
-          }
-        } else if (message.includes('error') || message.includes('Error')) {
-          this.log.warn(`📺 FFmpeg stderr: ${message}`);
-        } else if (this.debugMode && !message.includes('frame=')) {
+        // Log only errors and critical messages
+        if (message.includes('error') || message.includes('Error')) {
+          this.log.warn(`📺 FFmpeg error: ${message}`);
+        } else if (this.debugMode) {
           this.log.debug(`📺 FFmpeg: ${message}`);
         }
         
@@ -595,14 +572,17 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
         }
       });
 
-      // Also monitor stdout for additional info
-      this.log.info('👂 Starting FFmpeg stdout monitoring...');
+      // Monitor stdout only in debug mode
       ffmpegProcess.stdout?.on('data', (data) => {
-        this.log.info(`📺 FFmpeg stdout: ${data.toString().trim()}`);
+        if (this.debugMode) {
+          this.log.debug(`📺 FFmpeg stdout: ${data.toString().trim()}`);
+        }
       });
       
       // Optimized fallback success callback - faster response
-      this.log.info(`⏱️ Setting optimized ${this.fallbackTimeout}ms fallback timeout...`);
+      if (this.debugMode) {
+        this.log.debug(`⏱️ Setting ${this.fallbackTimeout}ms fallback timeout...`);
+      }
       setTimeout(() => {
         if (!streamStarted && !callbackCalled) {
           streamStarted = true;
