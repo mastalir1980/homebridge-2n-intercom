@@ -29,19 +29,11 @@ export class TwoNIntercomAccessory {
       .setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.device.host);
 
     const deviceType = accessory.context.device.type;
+    const homeKitDeviceType = accessory.context.device.deviceType || 'garage';
 
-    // Create Switch service for door unlock (for switch accessory or combined)
+    // Create appropriate HomeKit service based on user selection
     if (deviceType === 'switch' || !deviceType) {
-      this.switchService = this.accessory.getService(this.platform.Service.Switch) ||
-        this.accessory.addService(this.platform.Service.Switch);
-
-      this.switchService.setCharacteristic(this.platform.Characteristic.Name, 'Door Unlock');
-
-      this.switchService.getCharacteristic(this.platform.Characteristic.On)
-        .onGet(this.handleSwitchOnGet.bind(this))
-        .onSet(this.handleSwitchOnSet.bind(this));
-
-      this.platform.log.info('Door unlock switch initialized');
+      this.createDoorService(homeKitDeviceType);
     }
 
     // Setup camera streaming (for camera accessory)
@@ -106,6 +98,105 @@ export class TwoNIntercomAccessory {
   */
 
   /**
+   * Create appropriate HomeKit service based on device type selection
+   */
+  private createDoorService(deviceType: string): void {
+    switch (deviceType) {
+      case 'garage':
+        this.createGarageDoorService();
+        break;
+      case 'lock':
+        this.createLockService();
+        break;
+      case 'outlet':
+        this.createOutletService();
+        break;
+      case 'switch':
+      default:
+        this.createSwitchService();
+        break;
+    }
+  }
+
+  private createSwitchService(): void {
+    this.switchService = this.accessory.getService(this.platform.Service.Switch) ||
+      this.accessory.addService(this.platform.Service.Switch);
+
+    this.switchService.setCharacteristic(this.platform.Characteristic.Name, 'Door Unlock');
+
+    this.switchService.getCharacteristic(this.platform.Characteristic.On)
+      .onGet(this.handleSwitchOnGet.bind(this))
+      .onSet(this.handleSwitchOnSet.bind(this));
+
+    this.platform.log.info('Door unlock switch initialized');
+  }
+
+  private createGarageDoorService(): void {
+    // Remove old switch service if exists
+    const oldService = this.accessory.getService(this.platform.Service.Switch);
+    if (oldService) {
+      this.accessory.removeService(oldService);
+    }
+
+    this.switchService = this.accessory.getService(this.platform.Service.GarageDoorOpener) ||
+      this.accessory.addService(this.platform.Service.GarageDoorOpener);
+
+    this.switchService.setCharacteristic(this.platform.Characteristic.Name, 'Door');
+    this.switchService.setCharacteristic(this.platform.Characteristic.ObstructionDetected, false);
+
+    this.switchService.getCharacteristic(this.platform.Characteristic.CurrentDoorState)
+      .onGet(() => this.platform.Characteristic.CurrentDoorState.CLOSED);
+
+    this.switchService.getCharacteristic(this.platform.Characteristic.TargetDoorState)
+      .onGet(() => this.platform.Characteristic.TargetDoorState.CLOSED)
+      .onSet(this.handleGarageDoorSet.bind(this));
+
+    this.platform.log.info('Garage door opener initialized (appears as garage door in HomeKit)');
+  }
+
+  private createLockService(): void {
+    // Remove old switch service if exists
+    const oldService = this.accessory.getService(this.platform.Service.Switch);
+    if (oldService) {
+      this.accessory.removeService(oldService);
+    }
+
+    this.switchService = this.accessory.getService(this.platform.Service.LockManagement) ||
+      this.accessory.addService(this.platform.Service.LockManagement);
+
+    this.switchService.setCharacteristic(this.platform.Characteristic.Name, 'Door Lock');
+
+    this.switchService.getCharacteristic(this.platform.Characteristic.LockCurrentState)
+      .onGet(() => this.platform.Characteristic.LockCurrentState.SECURED);
+
+    this.switchService.getCharacteristic(this.platform.Characteristic.LockTargetState)
+      .onGet(() => this.platform.Characteristic.LockTargetState.SECURED)
+      .onSet(this.handleLockSet.bind(this));
+
+    this.platform.log.info('Door lock initialized (appears as door lock in HomeKit)');
+  }
+
+  private createOutletService(): void {
+    // Remove old switch service if exists
+    const oldService = this.accessory.getService(this.platform.Service.Switch);
+    if (oldService) {
+      this.accessory.removeService(oldService);
+    }
+
+    this.switchService = this.accessory.getService(this.platform.Service.Outlet) ||
+      this.accessory.addService(this.platform.Service.Outlet);
+
+    this.switchService.setCharacteristic(this.platform.Characteristic.Name, 'Door Control');
+    this.switchService.setCharacteristic(this.platform.Characteristic.OutletInUse, true);
+
+    this.switchService.getCharacteristic(this.platform.Characteristic.On)
+      .onGet(this.handleSwitchOnGet.bind(this))
+      .onSet(this.handleSwitchOnSet.bind(this));
+
+    this.platform.log.info('Outlet initialized (appears as power outlet in HomeKit)');
+  }
+
+  /**
    * Handle requests to get the current value of the "On" characteristic (for door unlock switch)
    */
   handleSwitchOnGet(): CharacteristicValue {
@@ -134,6 +225,91 @@ export class TwoNIntercomAccessory {
             this.platform.log.debug('Switch turned off');
           }
         }, switchDuration);
+      } catch (error) {
+        this.platform.log.error('Error unlocking door:', error);
+        throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+      }
+    }
+  }
+
+  /**
+   * Handle garage door opener requests
+   */
+  async handleGarageDoorSet(value: CharacteristicValue) {
+    if (value === this.platform.Characteristic.TargetDoorState.OPEN) {
+      try {
+        // Set to opening state
+        this.switchService?.updateCharacteristic(
+          this.platform.Characteristic.CurrentDoorState,
+          this.platform.Characteristic.CurrentDoorState.OPENING
+        );
+
+        // Unlock the door
+        await this.unlockDoor();
+        
+        // Simulate door opening
+        setTimeout(() => {
+          this.switchService?.updateCharacteristic(
+            this.platform.Characteristic.CurrentDoorState,
+            this.platform.Characteristic.CurrentDoorState.OPEN
+          );
+
+          // Auto-close after duration
+          const switchDuration = this.accessory.context.device.switchDuration || 3000;
+          setTimeout(() => {
+            this.switchService?.updateCharacteristic(
+              this.platform.Characteristic.CurrentDoorState,
+              this.platform.Characteristic.CurrentDoorState.CLOSING
+            );
+            this.switchService?.updateCharacteristic(
+              this.platform.Characteristic.TargetDoorState,
+              this.platform.Characteristic.TargetDoorState.CLOSED
+            );
+
+            setTimeout(() => {
+              this.switchService?.updateCharacteristic(
+                this.platform.Characteristic.CurrentDoorState,
+                this.platform.Characteristic.CurrentDoorState.CLOSED
+              );
+            }, 1000);
+          }, switchDuration);
+        }, 1000);
+        
+      } catch (error) {
+        this.platform.log.error('Error opening garage door:', error);
+        throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+      }
+    }
+  }
+
+  /**
+   * Handle door lock requests
+   */
+  async handleLockSet(value: CharacteristicValue) {
+    if (value === this.platform.Characteristic.LockTargetState.UNSECURED) {
+      try {
+        // Unlock the door
+        await this.unlockDoor();
+        
+        // Set to unlocked state
+        this.switchService?.updateCharacteristic(
+          this.platform.Characteristic.LockCurrentState,
+          this.platform.Characteristic.LockCurrentState.UNSECURED
+        );
+
+        // Auto-lock after duration
+        const switchDuration = this.accessory.context.device.switchDuration || 3000;
+        setTimeout(() => {
+          this.switchService?.updateCharacteristic(
+            this.platform.Characteristic.LockCurrentState,
+            this.platform.Characteristic.LockCurrentState.SECURED
+          );
+          this.switchService?.updateCharacteristic(
+            this.platform.Characteristic.LockTargetState,
+            this.platform.Characteristic.LockTargetState.SECURED
+          );
+        }, switchDuration);
+        
       } catch (error) {
         this.platform.log.error('Error unlocking door:', error);
         throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);

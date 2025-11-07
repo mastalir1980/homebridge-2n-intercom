@@ -75,6 +75,54 @@
         ],
         "description": "Choose video stream quality. VGA is recommended for optimal performance."
       },
+      "deviceType": {
+        "title": "Device Type in HomeKit",
+        "type": "string",
+        "default": "garage",
+        "required": true,
+        "oneOf": [
+          {
+            "title": "Garage Door - Shows as garage door opener",
+            "enum": ["garage"],
+            "description": "Best for automatic doors/gates, shows open/close animation"
+          },
+          {
+            "title": "Door Lock - Shows as door lock",
+            "enum": ["lock"],
+            "description": "Traditional door lock with lock/unlock actions"
+          },
+          {
+            "title": "Switch - Shows as light switch",
+            "enum": ["switch"],
+            "description": "Simple on/off switch (legacy behavior)"
+          },
+          {
+            "title": "Outlet - Shows as power outlet",
+            "enum": ["outlet"],
+            "description": "Shows as controllable power outlet"
+          }
+        ],
+        "description": "How the device appears in HomeKit. Garage door is recommended for gates/automatic doors."
+      },
+      "protocol": {
+        "title": "API Protocol",
+        "type": "string",
+        "default": "https",
+        "required": true,
+        "oneOf": [
+          {
+            "title": "HTTPS - Secure (Recommended)",
+            "enum": ["https"],
+            "description": "Encrypted connection, more secure"
+          },
+          {
+            "title": "HTTP - Insecure",
+            "enum": ["http"],
+            "description": "Unencrypted connection, faster but less secure"
+          }
+        ],
+        "description": "Protocol for API communication. HTTPS is recommended for security."
+      },
       "snapshotRefreshInterval": {
         "title": "Snapshot Refresh Interval (seconds)",
         "type": "number",
@@ -106,7 +154,9 @@
       "expanded": true,
       "items": [
         "doorSwitchNumber",
-        "enableDoorbell"
+        "enableDoorbell",
+        "deviceType",
+        "protocol"
       ]
     },
     {

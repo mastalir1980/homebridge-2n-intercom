@@ -24,6 +24,8 @@ export interface TwoNIntercomConfig {
   enableDoorbell?: boolean; // Enable doorbell functionality, default: true
   videoQuality?: 'vga' | 'hd'; // Video stream quality, default: 'vga'
   snapshotRefreshInterval?: number; // Snapshot refresh interval in seconds, default: 10
+  deviceType?: 'garage' | 'lock' | 'switch' | 'outlet'; // How device appears in HomeKit, default: 'garage'
+  protocol?: 'http' | 'https'; // API protocol, default: 'https'
   
   // Auto-generated internal URLs (not user-configurable)
   doorOpenUrl?: string; // Auto-generated from host and doorSwitchNumber

@@ -5,7 +5,7 @@
     "port": 51826,
     "pin": "031-45-154"
   },
-  "description": "Sample configuration for Homebridge with 2N Intercom plugin v2.0",
+  "description": "Sample configuration for Homebridge with 2N Intercom plugin v2.1",
   "platforms": [
     {
       "platform": "2NIntercom",
@@ -15,7 +15,9 @@
       "pass": "hesloheslo",
       "doorSwitchNumber": 1,
       "enableDoorbell": true,
-      "videoQuality": "vga"
+      "videoQuality": "vga",
+      "deviceType": "garage",
+      "protocol": "https"
     }
   ]
 }

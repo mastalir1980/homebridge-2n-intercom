@@ -41,6 +41,8 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     this.config.enableDoorbell = this.config.enableDoorbell !== false; // Default true
     this.config.videoQuality = this.config.videoQuality || 'vga';
     this.config.snapshotRefreshInterval = this.config.snapshotRefreshInterval || 10;
+    this.config.deviceType = this.config.deviceType || 'garage';
+    this.config.protocol = this.config.protocol || 'https';
     this.config.switchDuration = 1000; // Fixed 1 second
     this.config.doorbellPollingInterval = 2000; // Fixed 2 seconds
     
@@ -66,12 +68,13 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
   private generateUrls(): void {
     const host = this.config.host;
     const switchNum = this.config.doorSwitchNumber;
+    const protocol = this.config.protocol;
     
-    // Generate all URLs based on 2N API standards
-    this.config.doorOpenUrl = `http://${host}/api/switch/ctrl?switch=${switchNum}&action=on`;
-    this.config.snapshotUrl = `http://${host}/api/camera/snapshot`;
-    this.config.streamUrl = `rtsp://${host}:554/h264_stream`;
-    this.config.doorbellEventsUrl = `http://${host}/api/call/status`;
+    // Generate all URLs based on 2N API standards with selected protocol
+    this.config.doorOpenUrl = `${protocol}://${host}/api/switch/ctrl?switch=${switchNum}&action=on`;
+    this.config.snapshotUrl = `${protocol}://${host}/api/camera/snapshot`;
+    this.config.streamUrl = `rtsp://${host}:554/h264_stream`; // RTSP always uses rtsp://
+    this.config.doorbellEventsUrl = `${protocol}://${host}/api/call/status`;
     
 
   }
@@ -108,6 +111,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         pass: this.config.pass,
         doorOpenUrl: this.config.doorOpenUrl,
         switchDuration: this.config.switchDuration,
+        deviceType: this.config.deviceType,
         type: 'switch',
       };
 
@@ -123,6 +127,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         pass: this.config.pass,
         doorOpenUrl: this.config.doorOpenUrl,
         switchDuration: this.config.switchDuration,
+        deviceType: this.config.deviceType,
         type: 'switch',
       };
 
