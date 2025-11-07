@@ -1,5 +1,5 @@
 {
-  "pluginAlias": "TwoNIntercom",
+  "pluginAlias": "2NIntercom",
   "pluginType": "platform",
   "singular": true,
   "headerDisplay": "Homebridge 2N Intercom Plugin - Complete solution for 2N intercoms with door control, video streaming, and doorbell notifications",
