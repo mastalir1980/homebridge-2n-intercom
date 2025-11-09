@@ -24,6 +24,8 @@ export interface TwoNIntercomConfig {
   enableDoorbell?: boolean; // Enable doorbell functionality, default: true
   videoQuality?: 'vga' | 'hd'; // Video stream quality, default: 'vga'
   snapshotRefreshInterval?: number; // Snapshot refresh interval in seconds, default: 10
+  protocol?: 'http' | 'https'; // Protocol to use, default: 'https'
+  verifySSL?: boolean; // Verify SSL certificates for HTTPS, default: false
   
   // Auto-generated internal URLs (not user-configurable)
   doorOpenUrl?: string; // Auto-generated from host and doorSwitchNumber

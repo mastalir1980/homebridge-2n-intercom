@@ -1,5 +1,6 @@
 import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
 import axios from 'axios';
+import https from 'https';
 import { TwoNIntercomPlatform } from './platform';
 import { TwoNStreamingDelegate } from './streamingDelegate';
 
@@ -53,6 +54,7 @@ export class TwoNIntercomAccessory {
         accessory.context.device.streamUrl,
         accessory.context.device.user,
         accessory.context.device.pass,
+        accessory.context.device.verifySSL || false, // SSL verification from config
         false, // Debug mode off in production
         accessory.context.device.videoQuality || 'vga' // Video quality from config
       );
@@ -91,6 +93,29 @@ export class TwoNIntercomAccessory {
     /* Door status polling disabled
     this.startPolling();
     */
+  }
+
+  /**
+   * Get HTTP configuration with SSL settings
+   */
+  private getHttpConfig() {
+    const config = {
+      auth: {
+        username: this.accessory.context.device.user,
+        password: this.accessory.context.device.pass,
+      },
+      timeout: 5000,
+      httpsAgent: undefined as https.Agent | undefined,
+    };
+
+    // Configure SSL behavior based on verifySSL setting
+    if (!this.accessory.context.device.verifySSL) {
+      config.httpsAgent = new https.Agent({
+        rejectUnauthorized: false,
+      });
+    }
+
+    return config;
   }
 
   /* MVP: Future features commented out
@@ -148,13 +173,7 @@ export class TwoNIntercomAccessory {
     try {
       this.platform.log.info('Unlocking door...');
       
-      await axios.get(this.accessory.context.device.doorOpenUrl, {
-        auth: {
-          username: this.accessory.context.device.user,
-          password: this.accessory.context.device.pass,
-        },
-        timeout: 5000,
-      });
+      await axios.get(this.accessory.context.device.doorOpenUrl, this.getHttpConfig());
 
       this.platform.log.debug('Door unlocked successfully');
     } catch (error) {
@@ -269,13 +288,7 @@ export class TwoNIntercomAccessory {
     try {
       const config = this.accessory.context.device;
       
-      const response = await axios.get(config.doorbellEventsUrl!, {
-        auth: {
-          username: config.user,
-          password: config.pass,
-        },
-        timeout: 5000,
-      });
+      const response = await axios.get(config.doorbellEventsUrl!, this.getHttpConfig());
 
       // Different 2N models return different formats
       let isCallActive = false;

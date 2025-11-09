@@ -40,7 +40,9 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     this.config.doorSwitchNumber = this.config.doorSwitchNumber || 1;
     this.config.enableDoorbell = this.config.enableDoorbell !== false; // Default true
     this.config.videoQuality = this.config.videoQuality || 'vga';
-    this.config.snapshotRefreshInterval = this.config.snapshotRefreshInterval || 10;
+    this.config.snapshotRefreshInterval = this.config.snapshotRefreshInterval || 30;
+    this.config.protocol = this.config.protocol || 'https'; // Default HTTPS
+    this.config.verifySSL = this.config.verifySSL !== undefined ? this.config.verifySSL : false; // Default false
     this.config.switchDuration = 1000; // Fixed 1 second
     this.config.doorbellPollingInterval = 2000; // Fixed 2 seconds
     
@@ -49,7 +51,8 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     
     this.log.info('🏠 2N Intercom Platform initialized');
     this.log.info(`📡 Device: ${this.config.host}`);
-    this.log.info(`🚪 Door relay: ${this.config.doorSwitchNumber}`);
+    this.log.info(`� Protocol: ${this.config.protocol?.toUpperCase()} (SSL verify: ${this.config.verifySSL ? 'enabled' : 'disabled'})`);
+    this.log.info(`�🚪 Door relay: ${this.config.doorSwitchNumber}`);
     this.log.info(`🔔 Doorbell: ${this.config.enableDoorbell ? 'enabled' : 'disabled'}`);
     this.log.info(`📺 Video quality: ${this.config.videoQuality.toUpperCase()}`);
 
@@ -67,13 +70,17 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     const host = this.config.host;
     const switchNum = this.config.doorSwitchNumber;
     
-    // Generate all URLs based on 2N API standards
-    this.config.doorOpenUrl = `http://${host}/api/switch/ctrl?switch=${switchNum}&action=on`;
-    this.config.snapshotUrl = `http://${host}/api/camera/snapshot`;
-    this.config.streamUrl = `rtsp://${host}:554/h264_stream`;
-    this.config.doorbellEventsUrl = `http://${host}/api/call/status`;
+    // Use explicitly configured protocol (defaults to HTTPS)
+    const protocol = this.config.protocol || 'https';
     
-
+    // Clean host (remove protocol if included)
+    const cleanHost = host.replace(/^https?:\/\//, '');
+    
+    // Generate all URLs based on 2N API standards
+    this.config.doorOpenUrl = `${protocol}://${cleanHost}/api/switch/ctrl?switch=${switchNum}&action=on`;
+    this.config.snapshotUrl = `${protocol}://${cleanHost}/api/camera/snapshot`;
+    this.config.streamUrl = `rtsp://${cleanHost}:554/h264_stream`;
+    this.config.doorbellEventsUrl = `${protocol}://${cleanHost}/api/call/status`;
   }
 
   configureAccessory(accessory: PlatformAccessory) {
@@ -108,6 +115,8 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         pass: this.config.pass,
         doorOpenUrl: this.config.doorOpenUrl,
         switchDuration: this.config.switchDuration,
+        protocol: this.config.protocol,
+        verifySSL: this.config.verifySSL,
         type: 'switch',
       };
 
@@ -123,6 +132,8 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         pass: this.config.pass,
         doorOpenUrl: this.config.doorOpenUrl,
         switchDuration: this.config.switchDuration,
+        protocol: this.config.protocol,
+        verifySSL: this.config.verifySSL,
         type: 'switch',
       };
 
@@ -159,6 +170,8 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorbellPollingInterval: this.config.doorbellPollingInterval,
         videoQuality: this.config.videoQuality,
         snapshotRefreshInterval: this.config.snapshotRefreshInterval,
+        protocol: this.config.protocol,
+        verifySSL: this.config.verifySSL,
       };
 
       new TwoNIntercomAccessory(this, existingCameraAccessory);
@@ -179,6 +192,8 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorbellPollingInterval: this.config.doorbellPollingInterval,
         videoQuality: this.config.videoQuality,
         snapshotRefreshInterval: this.config.snapshotRefreshInterval,
+        protocol: this.config.protocol,
+        verifySSL: this.config.verifySSL,
       };
 
       new TwoNIntercomAccessory(this, cameraAccessory);

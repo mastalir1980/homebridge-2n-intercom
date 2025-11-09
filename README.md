@@ -9,10 +9,11 @@ Complete Homebridge plugin for 2N intercoms with door control, live video stream
 
 - 🚪 **Door Control Switch** - Open doors remotely with auto-off timer
 - 📹 **Live Video Streaming** - View camera feed in HomeKit with H.264 support  
-- 📸 **Camera Snapshots** - Get instant camera images with dynamic sizing
+- 📸 **Smart Camera Snapshots** - Instant images with caching to prevent black screens
 - 🔔 **Doorbell Notifications** - HomeKit notifications when someone presses the button
+- 🔒 **SSL/HTTPS Support** - Secure communication with configurable certificate handling
 - 🏠 **Home Pod Integration** - Doorbell chimes play through Home Pod
-- ⚙️ **Easy Configuration** - Works with most 2N intercom models
+- ⚙️ **Easy Web Configuration** - Complete setup via Homebridge UI
 - 🔄 **Automatic Discovery** - Creates separate accessories for better HomeKit compatibility
 
 ## Installation
@@ -29,7 +30,7 @@ Complete Homebridge plugin for 2N intercoms with door control, live video stream
 npm install -g homebridge-2n-intercom
 ```
 
-## Quick Setup (v2.0.0+)
+## Quick Setup (v2.1.0+)
 
 ### Web Configuration Interface ✨
 Starting with v2.0.0, configuration is **dramatically simplified**:
@@ -43,8 +44,10 @@ Starting with v2.0.0, configuration is **dramatically simplified**:
    - **Door Switch**: `1` (relay 1-4)
    - **Enable Doorbell**: `Yes`
    - **Video Quality**: `VGA (Recommended)`
+   - **Protocol**: `HTTPS (Recommended)` 🔒
+   - **SSL Verification**: `Disabled (for self-signed certs)`
 
-**That's it!** All URLs are auto-generated. No more manual configuration! 🚀
+**That's it!** All URLs are auto-generated with secure HTTPS by default! 🚀
 
 ### Legacy Manual Configuration (v1.x)
 For advanced users or legacy setups:
@@ -80,7 +83,9 @@ All URLs are **auto-generated** from these simple settings:
 | `doorSwitchNumber` | No | `1` | Which relay controls door (1-4) |
 | `enableDoorbell` | No | `true` | Enable doorbell notifications |
 | `videoQuality` | No | `vga` | Stream quality: `vga` or `hd` |
-| `snapshotRefreshInterval` | No | `10` | Snapshot refresh rate (5-300s) |
+| `snapshotRefreshInterval` | No | `30` | Snapshot refresh rate (10-300s) |
+| `protocol` | No | `https` | Connection protocol: `https` or `http` 🔒 |
+| `verifySSL` | No | `false` | Verify SSL certificates (disable for self-signed) |
 
 ### Legacy Manual Parameters (v1.x)
 For backward compatibility and advanced setups:
@@ -92,6 +97,46 @@ For backward compatibility and advanced setups:
 | `streamUrl` | No | - | RTSP URL for live video streaming |
 | `doorbellEventsUrl` | No | - | HTTP API endpoint for doorbell events |
 | `doorbellPollingInterval` | No | `2000` | Doorbell polling frequency (ms) |
+
+## 🔒 SSL/HTTPS Configuration (v2.1.0+)
+
+### Secure by Default
+- **HTTPS is enabled by default** for all new installations
+- **SSL certificate verification disabled by default** (most 2N intercoms use self-signed certificates)
+- **Automatic protocol detection** based on your configuration
+
+### SSL Configuration Options
+
+#### **HTTPS (Recommended)**
+```json
+{
+  "protocol": "https",
+  "verifySSL": false,  // Recommended for 2N intercoms
+  "host": "192.168.1.100"
+}
+```
+
+#### **HTTP (Legacy/Unsecure)**
+```json
+{
+  "protocol": "http",
+  "host": "192.168.1.100"
+}
+```
+
+#### **Custom HTTPS Port**
+```json
+{
+  "protocol": "https",
+  "host": "192.168.1.100:8443",
+  "verifySSL": false
+}
+```
+
+### SSL Certificate Handling
+- **Most 2N intercoms use self-signed certificates** → Set `verifySSL: false`
+- **Enterprise setups with proper certificates** → Set `verifySSL: true`  
+- **Mixed environments** → Configure per device in web UI
 
 ## What You Get
 
@@ -111,7 +156,7 @@ When configured, this plugin creates up to **two separate HomeKit accessories**:
 
 ### Door Control URLs
 Test these URLs in your browser to find the right one:
-- `http://IP/api/switch/ctrl?switch=1&action=trigger` ✅ **Most common**
+- `http://IP/api/switch/ctrl?switch=1&action=trigger` 
 
 ### Camera Snapshot URLs
 Plugin automatically adds width/height parameters:
@@ -188,30 +233,6 @@ When someone presses your intercom button:
 - **2N Intercom** with HTTP API enabled
 - **Network access** between Homebridge server and intercom
 
-## Advanced Configuration
-
-### Multiple Intercoms
-You can configure multiple intercoms by creating separate platform instances:
-
-```json
-{
-  "platforms": [
-    {
-      "platform": "2NIntercom",
-      "name": "Front Door",
-      "host": "192.168.1.100",
-      "doorOpenUrl": "http://192.168.1.100/api/switch/ctrl?switch=1&action=trigger"
-    },
-    {
-      "platform": "2NIntercom", 
-      "name": "Back Gate",
-      "host": "192.168.1.101",
-      "doorOpenUrl": "http://192.168.1.101/api/switch/ctrl?switch=1&action=trigger"
-    }
-  ]
-}
-```
-
 ### Performance Tuning
 For better performance on slower networks:
 - Increase `doorbellPollingInterval` to 3000-5000ms
@@ -228,7 +249,3 @@ Found a bug or want to contribute?
 ## License
 
 MIT © Jan Maštalíř
-
----
-
-**Need Help?** Check the [troubleshooting section](#troubleshooting) or create an issue on GitHub with your 2N model and configuration details.

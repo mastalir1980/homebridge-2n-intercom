@@ -78,10 +78,34 @@
       "snapshotRefreshInterval": {
         "title": "Snapshot Refresh Interval (seconds)",
         "type": "number",
-        "default": 10,
-        "minimum": 5,
+        "default": 30,
+        "minimum": 10,
         "maximum": 300,
-        "description": "How often HomeKit requests fresh snapshots (5-300 seconds). Lower values = more frequent updates but higher load."
+        "description": "How often HomeKit requests fresh snapshots (10-300 seconds). Higher values = less load, fewer black screens."
+      },
+      "protocol": {
+        "title": "Connection Protocol",
+        "type": "string",
+        "default": "https",
+        "oneOf": [
+          {
+            "title": "HTTPS (Recommended)",
+            "enum": ["https"],
+            "description": "Secure HTTPS connection (default for modern 2N intercoms)"
+          },
+          {
+            "title": "HTTP",
+            "enum": ["http"],
+            "description": "Unsecure HTTP connection (legacy intercoms only)"
+          }
+        ],
+        "description": "Choose connection protocol. HTTPS is recommended for security."
+      },
+      "verifySSL": {
+        "title": "Verify SSL Certificates",
+        "type": "boolean",
+        "default": false,
+        "description": "Enable SSL certificate verification for HTTPS connections. Disable for self-signed certificates (recommended for most 2N intercoms)."
       }
     },
     "required": ["name", "host", "user", "pass"]
@@ -106,7 +130,9 @@
       "expanded": true,
       "items": [
         "doorSwitchNumber",
-        "enableDoorbell"
+        "enableDoorbell",
+        "protocol",
+        "verifySSL"
       ]
     },
     {

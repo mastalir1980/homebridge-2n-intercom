@@ -15,6 +15,7 @@ import {
   Logger,
 } from 'homebridge';
 import axios from 'axios';
+import https from 'https';
 import { spawn, ChildProcess } from 'child_process';
 import { existsSync } from 'fs';
 const ffmpegPath = require('ffmpeg-for-homebridge');
@@ -52,6 +53,7 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   private readonly streamUrl: string;
   private readonly user: string;
   private readonly pass: string;
+  private readonly verifySSL: boolean;
   
   // Optimized retry configuration for faster stream startup
   private readonly maxRetries = 2; // Reduced from 3 for faster failure recovery
@@ -64,17 +66,23 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
 
   controller?: CameraController;
 
+  // Snapshot caching to prevent black screens
+  private lastSnapshot?: Buffer;
+  private lastSnapshotTime = 0;
+  private readonly snapshotCacheTime = 5000; // Cache for 5 seconds
+
   // keep track of sessions
   pendingSessions: Map<string, SessionInfo> = new Map();
   ongoingSessions: Map<string, ChildProcess> = new Map();
 
-  constructor(hap: HAP, log: Logger, snapshotUrl: string, streamUrl: string, user: string, pass: string, debugMode: boolean = false, videoQuality: 'vga' | 'hd' = 'vga') {
+  constructor(hap: HAP, log: Logger, snapshotUrl: string, streamUrl: string, user: string, pass: string, verifySSL: boolean = false, debugMode: boolean = false, videoQuality: 'vga' | 'hd' = 'vga') {
     this.hap = hap;
     this.log = log;
     this.snapshotUrl = snapshotUrl;
     this.streamUrl = streamUrl;
     this.user = user;
     this.pass = pass;
+    this.verifySSL = verifySSL;
     this.debugMode = debugMode; // Initialize debug mode
     this.videoQuality = videoQuality; // Initialize video quality
     
@@ -129,23 +137,50 @@ export class TwoNStreamingDelegate implements CameraStreamingDelegate {
   }
 
   async handleSnapshotRequest(request: SnapshotRequest, callback: SnapshotRequestCallback): Promise<void> {
+    const now = Date.now();
+    
+    // Use cached snapshot if available and fresh
+    if (this.lastSnapshot && (now - this.lastSnapshotTime) < this.snapshotCacheTime) {
+      this.log.debug('📷 Using cached snapshot');
+      callback(undefined, this.lastSnapshot);
+      return;
+    }
+
     try {
       // Build snapshot URL with required parameters
       const snapshotUrl = new URL(this.snapshotUrl);
       snapshotUrl.searchParams.set('width', request.width.toString());
-      snapshotUrl.searchParams.set('height', request.height.toString());      const response = await axios.get(snapshotUrl.toString(), {
+      snapshotUrl.searchParams.set('height', request.height.toString());
+
+      this.log.debug('📷 Fetching fresh snapshot from camera');
+      
+      const response = await axios.get(snapshotUrl.toString(), {
         auth: {
           username: this.user,
           password: this.pass,
         },
         responseType: 'arraybuffer',
-        timeout: 10000,
+        timeout: 8000, // Reduced timeout
+        httpsAgent: !this.verifySSL ? new https.Agent({ rejectUnauthorized: false }) : undefined,
       });
 
-      callback(undefined, Buffer.from(response.data));
+      const snapshot = Buffer.from(response.data);
+      
+      // Cache the new snapshot
+      this.lastSnapshot = snapshot;
+      this.lastSnapshotTime = now;
+      
+      callback(undefined, snapshot);
     } catch (error) {
       this.log.error('❌ SNAPSHOT ERROR:', error);
-      callback(error as Error);
+      
+      // If we have a cached snapshot, return it instead of failing
+      if (this.lastSnapshot) {
+        this.log.warn('📷 Using cached snapshot due to error');
+        callback(undefined, this.lastSnapshot);
+      } else {
+        callback(error as Error);
+      }
     }
   }
 

@@ -1,21 +1,24 @@
 {
   "bridge": {
     "name": "Homebridge",
-    "username": "CC:22:3D:E3:CE:30",
+    "username": "AA:BB:CC:DD:EE:FF",
     "port": 51826,
-    "pin": "031-45-154"
+    "pin": "123-45-678"
   },
-  "description": "Sample configuration for Homebridge with 2N Intercom plugin v2.0",
+  "description": "Sample configuration for Homebridge with 2N Intercom plugin v2.0.3 - Replace with your actual values",
   "platforms": [
     {
       "platform": "2NIntercom",
       "name": "2N Intercom",
-      "host": "192.168.88.100",
-      "user": "mastix",
-      "pass": "hesloheslo",
+      "host": "192.168.1.100",
+      "user": "admin",
+      "pass": "your_password",
       "doorSwitchNumber": 1,
       "enableDoorbell": true,
-      "videoQuality": "vga"
+      "videoQuality": "vga",
+      "snapshotRefreshInterval": 30,
+      "protocol": "https",
+      "verifySSL": false
     }
   ]
 }
