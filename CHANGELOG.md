@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.0] - 2025-11-13
+
+### ✨ New Features
+
+- **Per-User Doorbell Filtering**: Add `doorbellUser` configuration to trigger ring notifications only for a selected SIP user/account. The plugin fetches available phone accounts from the intercom at startup and logs them to help configuration.
+
+### 🐞 Fixes & Improvements
+
+- **Minor release**: Documentation and packaging updates, version bump to 2.2.0.
+
 ## [2.1.0] - 2025-11-09
 
 ### � Major Features
