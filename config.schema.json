@@ -59,8 +59,27 @@
       "doorbellFilterPeer": {
         "title": "Filter Doorbell by Caller",
         "type": "string",
+        "default": "",
+        "oneOf": [
+          {
+            "title": "All Users (Respond to all calls)",
+            "enum": [""]
+          },
+          {
+            "title": "Specific User (Enter SIP peer manually)",
+            "enum": ["custom"]
+          }
+        ],
+        "description": "Select which users trigger doorbell notifications. Choose 'All Users' to respond to everyone, or 'Specific User' to enter a SIP peer from your intercom's directory. Specific users can be found in the intercom's phone configuration."
+      },
+      "doorbellFilterPeerCustom": {
+        "title": "Specific SIP Peer",
+        "type": "string",
         "placeholder": "sip:4374834473@proxy.my2n.com:5061",
-        "description": "Optional: Filter doorbell notifications to respond only to a specific SIP peer/caller. Leave empty to respond to all calls. To find available peers, check your intercom's Phone Config at: https://YOUR_INTERCOM_IP/api/phone/config (requires authentication). Use the SIP number and domain from the account you want to monitor (e.g., sip:4374834473@proxy.my2n.com:5061)."
+        "condition": {
+          "functionBody": "return model.doorbellFilterPeer === 'custom';"
+        },
+        "description": "Enter the SIP peer address for the specific user (e.g., sip:4374834473@proxy.my2n.com:5061). Find this in your intercom's directory or phone config."
       },
       "videoQuality": {
         "title": "Video Stream Quality",
@@ -138,6 +157,7 @@
         "doorSwitchNumber",
         "enableDoorbell",
         "doorbellFilterPeer",
+        "doorbellFilterPeerCustom",
         "protocol",
         "verifySSL"
       ]

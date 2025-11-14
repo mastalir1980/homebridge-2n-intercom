@@ -22,7 +22,8 @@ export interface TwoNIntercomConfig {
   // Web-configurable parameters
   doorSwitchNumber?: number; // Which relay to use (1-4), default: 1
   enableDoorbell?: boolean; // Enable doorbell functionality, default: true
-  doorbellFilterPeer?: string; // Filter doorbell by SIP peer (e.g., "sip:4374834473@proxy.my2n.com:5061")
+  doorbellFilterPeer?: string; // Filter selection: "" (all) or "custom" (use doorbellFilterPeerCustom)
+  doorbellFilterPeerCustom?: string; // Custom SIP peer filter (e.g., "sip:4374834473@proxy.my2n.com:5061")
   videoQuality?: 'vga' | 'hd'; // Video stream quality, default: 'vga'
   snapshotRefreshInterval?: number; // Snapshot refresh interval in seconds, default: 10
   protocol?: 'http' | 'https'; // Protocol to use, default: 'https'
