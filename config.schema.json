@@ -59,7 +59,8 @@
       "doorbellFilterPeer": {
         "title": "Filter Doorbell by Caller",
         "type": "string",
-        "description": "Filter doorbell notifications to respond only to specific SIP peer/caller. Leave empty to respond to all calls. Format: sip:number@domain:port (e.g., sip:4374834473@proxy.my2n.com:5061)"
+        "placeholder": "sip:4374834473@proxy.my2n.com:5061",
+        "description": "Optional: Filter doorbell notifications to respond only to a specific SIP peer/caller. Leave empty to respond to all calls. To find available peers, check your intercom's Phone Config at: https://YOUR_INTERCOM_IP/api/phone/config (requires authentication). Use the SIP number and domain from the account you want to monitor (e.g., sip:4374834473@proxy.my2n.com:5061)."
       },
       "videoQuality": {
         "title": "Video Stream Quality",

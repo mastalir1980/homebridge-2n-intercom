@@ -15,6 +15,7 @@
       "pass": "your_password",
       "doorSwitchNumber": 1,
       "enableDoorbell": true,
+      "doorbellFilterPeer": "",
       "videoQuality": "vga",
       "snapshotRefreshInterval": 30,
       "protocol": "https",

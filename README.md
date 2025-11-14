@@ -82,10 +82,52 @@ All URLs are **auto-generated** from these simple settings:
 | `pass` | Yes | - | Password for intercom authentication |
 | `doorSwitchNumber` | No | `1` | Which relay controls door (1-4) |
 | `enableDoorbell` | No | `true` | Enable doorbell notifications |
+| `doorbellFilterPeer` | No | - | Filter doorbell by SIP peer (see below) |
 | `videoQuality` | No | `vga` | Stream quality: `vga` or `hd` |
 | `snapshotRefreshInterval` | No | `30` | Snapshot refresh rate (10-300s) |
 | `protocol` | No | `https` | Connection protocol: `https` or `http` 🔒 |
 | `verifySSL` | No | `false` | Verify SSL certificates (disable for self-signed) |
+
+### Filtering Doorbell by Caller (v2.1.0+)
+
+When your intercom has **multiple buttons or SIP accounts**, you can filter which calls trigger doorbell notifications:
+
+#### **Finding Available SIP Peers**
+To see all configured SIP accounts on your intercom:
+1. Access: `https://YOUR_INTERCOM_IP/api/phone/config` (requires authentication)
+2. Look for the `sipNumber` and `domain` fields in enabled accounts
+3. Format as: `sip:NUMBER@DOMAIN:PORT`
+
+Example response:
+```json
+{
+  "success": true,
+  "result": {
+    "accounts": [
+      {
+        "account": 2,
+        "enabled": true,
+        "sipNumber": "4374834473",
+        "domain": "proxy.my2n.com",
+        "domainPort": 5062,
+        "proxyPort": 5061
+      }
+    ]
+  }
+}
+```
+
+#### **Configuring Peer Filter**
+Use the SIP peer format in your configuration:
+```json
+{
+  "doorbellFilterPeer": "sip:4374834473@proxy.my2n.com:5061"
+}
+```
+
+- **Leave empty** to respond to all calls (default behavior)
+- **Set a peer** to only trigger doorbell for that specific caller
+- The filter uses partial matching, so you can use just the number if unique
 
 ### Legacy Manual Parameters (v1.x)
 For backward compatibility and advanced setups:
