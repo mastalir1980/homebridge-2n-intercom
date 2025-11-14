@@ -56,6 +56,11 @@
         "default": true,
         "description": "Enable doorbell button press notifications in HomeKit"
       },
+      "doorbellFilterPeer": {
+        "title": "Filter Doorbell by Caller",
+        "type": "string",
+        "description": "Filter doorbell notifications to respond only to specific SIP peer/caller. Leave empty to respond to all calls. Format: sip:number@domain:port (e.g., sip:4374834473@proxy.my2n.com:5061)"
+      },
       "videoQuality": {
         "title": "Video Stream Quality",
         "type": "string",
@@ -131,6 +136,7 @@
       "items": [
         "doorSwitchNumber",
         "enableDoorbell",
+        "doorbellFilterPeer",
         "protocol",
         "verifySSL"
       ]
