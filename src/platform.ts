@@ -10,6 +10,7 @@ import {
 
 import { PLATFORM_NAME, PLUGIN_NAME, TwoNIntercomConfig } from './settings';
 import { TwoNIntercomAccessory } from './accessory';
+import { fetchSipAccounts, formatSipPeer, getSipAccountDisplayName } from './schemaService';
 
 /**
  * HomebridgePlatform
@@ -59,8 +60,50 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     // When this event is fired it means Homebridge has restored all cached accessories from disk.
     this.api.on('didFinishLaunching', () => {
       this.log.debug('Executed didFinishLaunching callback');
+      this.fetchAndLogSipAccounts();
       this.discoverDevices();
     });
+  }
+
+  /**
+   * Fetch and log available SIP accounts from the intercom
+   */
+  private async fetchAndLogSipAccounts(): Promise<void> {
+    try {
+      this.log.info('🔍 Fetching SIP accounts from intercom...');
+      this.log.debug('========== SIP Account Discovery Debug Start ==========');
+      
+      const accounts = await fetchSipAccounts(
+        this.config.host,
+        this.config.user,
+        this.config.pass,
+        this.config.protocol || 'https',
+        this.config.verifySSL || false,
+        this.log, // Pass logger for debug output
+      );
+
+      this.log.debug('========== SIP Account Discovery Debug End ==========');
+
+      if (accounts.length > 0) {
+        this.log.info(`📞 Found ${accounts.length} enabled SIP account(s):`);
+        accounts.forEach((account, index) => {
+          const peer = formatSipPeer(account);
+          const displayName = getSipAccountDisplayName(account);
+          this.log.info(`   ${index + 1}. ${displayName}`);
+          this.log.info(`      SIP Peer: ${peer}`);
+        });
+        this.log.info('💡 Use these SIP peer values in the "Filter Doorbell by Caller" configuration');
+      } else {
+        this.log.warn('⚠️  No enabled SIP accounts found on the intercom');
+        this.log.warn('    Check that:');
+        this.log.warn('    1. At least one SIP account is enabled in the intercom');
+        this.log.warn('    2. The intercom is accessible at: ' + this.config.protocol + '://' + this.config.host);
+        this.log.warn('    3. Authentication credentials are correct');
+      }
+    } catch (error) {
+      this.log.error('❌ Failed to fetch SIP accounts:', error);
+      this.log.warn('You can still manually configure SIP peer filtering');
+    }
   }
 
   /**
@@ -168,6 +211,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         enableDoorbell: this.config.enableDoorbell,
         doorbellEventsUrl: this.config.doorbellEventsUrl,
         doorbellPollingInterval: this.config.doorbellPollingInterval,
+        doorbellFilterPeer: this.config.doorbellFilterPeer || '',
         videoQuality: this.config.videoQuality,
         snapshotRefreshInterval: this.config.snapshotRefreshInterval,
         protocol: this.config.protocol,
@@ -190,6 +234,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         enableDoorbell: this.config.enableDoorbell,
         doorbellEventsUrl: this.config.doorbellEventsUrl,
         doorbellPollingInterval: this.config.doorbellPollingInterval,
+        doorbellFilterPeer: this.config.doorbellFilterPeer || '',
         videoQuality: this.config.videoQuality,
         snapshotRefreshInterval: this.config.snapshotRefreshInterval,
         protocol: this.config.protocol,

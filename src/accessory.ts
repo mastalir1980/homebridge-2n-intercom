@@ -298,23 +298,48 @@ export class TwoNIntercomAccessory {
         if (response.data.result && response.data.result.sessions) {
           for (const session of response.data.result.sessions) {
             if (session.state === 'ringing') {
-              isCallActive = true;
-              break;
+              // Check if we should filter by peer
+              if (config.doorbellFilterPeer) {
+                // Check calls within session for matching peer
+                if (session.calls) {
+                  for (const call of session.calls) {
+                    if (call.state === 'ringing' && call.peer && call.peer.includes(config.doorbellFilterPeer)) {
+                      isCallActive = true;
+                      this.platform.log.debug('Doorbell triggered by matching peer:', call.peer);
+                      break;
+                    }
+                  }
+                }
+              } else {
+                // No filter configured, accept any ringing call
+                isCallActive = true;
+                break;
+              }
             }
             // Also check individual calls within session
-            if (session.calls) {
+            if (!isCallActive && session.calls) {
               for (const call of session.calls) {
                 if (call.state === 'ringing') {
-                  isCallActive = true;
-                  break;
+                  // Check if we should filter by peer
+                  if (config.doorbellFilterPeer) {
+                    if (call.peer && call.peer.includes(config.doorbellFilterPeer)) {
+                      isCallActive = true;
+                      this.platform.log.debug('Doorbell triggered by matching peer:', call.peer);
+                      break;
+                    }
+                  } else {
+                    // No filter configured, accept any ringing call
+                    isCallActive = true;
+                    break;
+                  }
                 }
               }
             }
           }
         }
         
-        // Fallback: Handle other common API response formats
-        if (!isCallActive) {
+        // Fallback: Handle other common API response formats (no peer filtering for these)
+        if (!isCallActive && !config.doorbellFilterPeer) {
           isCallActive = response.data.call_state === 'active' ||
                         response.data.state === 'calling' ||
                         response.data.state === 'ringing' ||

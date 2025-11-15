@@ -82,10 +82,52 @@ All URLs are **auto-generated** from these simple settings:
 | `pass` | Yes | - | Password for intercom authentication |
 | `doorSwitchNumber` | No | `1` | Which relay controls door (1-4) |
 | `enableDoorbell` | No | `true` | Enable doorbell notifications |
+| `doorbellFilterPeer` | No | `""` | Filter doorbell by caller (see below) |
 | `videoQuality` | No | `vga` | Stream quality: `vga` or `hd` |
 | `snapshotRefreshInterval` | No | `30` | Snapshot refresh rate (10-300s) |
 | `protocol` | No | `https` | Connection protocol: `https` or `http` 🔒 |
 | `verifySSL` | No | `false` | Verify SSL certificates (disable for self-signed) |
+
+### Filtering Doorbell by Caller (v2.1.0+)
+
+You can choose to respond to **all calls** or only **specific users** from your intercom's directory.
+
+**How It Works:**
+1. When the plugin starts, it automatically fetches the list of SIP users from your intercom
+2. Available SIP peers are logged in the Homebridge logs for easy reference
+3. You can configure the filter to respond to all users or just a specific SIP peer
+
+**Configuration:**
+- Leave the field **empty** to ring for all users (default)
+- Enter a **SIP peer address** to ring for only that specific user
+
+**Finding Your SIP Peers:**
+Check your Homebridge logs when the plugin starts - it will show all available SIP users:
+```
+📞 Found 2 enabled SIP account(s):
+   1. 2N IP Intercom 4374830182 (4374830182)
+      SIP Peer: sip:4374830182@proxy.my2n.com:5061
+   2. Local Account (111)
+      SIP Peer: sip:111@192.168.88.100
+```
+
+#### **Example Configuration - All Users**
+```json
+{
+  "platform": "2NIntercom",
+  "enableDoorbell": true,
+  "doorbellFilterPeer": ""
+}
+```
+
+#### **Example Configuration - Specific User**
+```json
+{
+  "platform": "2NIntercom",
+  "enableDoorbell": true,
+  "doorbellFilterPeer": "sip:4374830182@proxy.my2n.com:5061"
+}
+```
 
 ### Legacy Manual Parameters (v1.x)
 For backward compatibility and advanced setups:
