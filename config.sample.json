@@ -16,7 +16,6 @@
       "doorSwitchNumber": 1,
       "enableDoorbell": true,
       "doorbellFilterPeer": "",
-      "doorbellFilterPeerCustom": "",
       "videoQuality": "vga",
       "snapshotRefreshInterval": 30,
       "protocol": "https",

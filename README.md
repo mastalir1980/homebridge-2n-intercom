@@ -92,12 +92,24 @@ All URLs are **auto-generated** from these simple settings:
 
 You can choose to respond to **all calls** or only **specific users** from your intercom's directory.
 
-**Configuration:**
-- Select "All Users" to ring for everyone (default)
-- Select "Specific User" and enter a SIP peer to ring for only that user
+**How It Works:**
+1. When the plugin starts, it automatically fetches the list of SIP users from your intercom
+2. Available SIP peers are logged in the Homebridge logs for easy reference
+3. You can configure the filter to respond to all users or just a specific SIP peer
 
-**Finding Users:**
-Users can be found in your intercom's directory. Check the phone configuration to see available SIP accounts.
+**Configuration:**
+- Leave the field **empty** to ring for all users (default)
+- Enter a **SIP peer address** to ring for only that specific user
+
+**Finding Your SIP Peers:**
+Check your Homebridge logs when the plugin starts - it will show all available SIP users:
+```
+📞 Found 2 enabled SIP account(s):
+   1. 2N IP Intercom 4374830182 (4374830182)
+      SIP Peer: sip:4374830182@proxy.my2n.com:5061
+   2. Local Account (111)
+      SIP Peer: sip:111@192.168.88.100
+```
 
 #### **Example Configuration - All Users**
 ```json
@@ -113,8 +125,7 @@ Users can be found in your intercom's directory. Check the phone configuration t
 {
   "platform": "2NIntercom",
   "enableDoorbell": true,
-  "doorbellFilterPeer": "custom",
-  "doorbellFilterPeerCustom": "sip:4374834473@proxy.my2n.com:5061"
+  "doorbellFilterPeer": "sip:4374830182@proxy.my2n.com:5061"
 }
 ```
 

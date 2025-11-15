@@ -10,6 +10,7 @@ import {
 
 import { PLATFORM_NAME, PLUGIN_NAME, TwoNIntercomConfig } from './settings';
 import { TwoNIntercomAccessory } from './accessory';
+import { fetchSipAccounts, formatSipPeer, getSipAccountDisplayName } from './schemaService';
 
 /**
  * HomebridgePlatform
@@ -59,8 +60,42 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
     // When this event is fired it means Homebridge has restored all cached accessories from disk.
     this.api.on('didFinishLaunching', () => {
       this.log.debug('Executed didFinishLaunching callback');
+      this.fetchAndLogSipAccounts();
       this.discoverDevices();
     });
+  }
+
+  /**
+   * Fetch and log available SIP accounts from the intercom
+   */
+  private async fetchAndLogSipAccounts(): Promise<void> {
+    try {
+      this.log.info('🔍 Fetching SIP accounts from intercom...');
+      
+      const accounts = await fetchSipAccounts(
+        this.config.host,
+        this.config.user,
+        this.config.pass,
+        this.config.protocol || 'https',
+        this.config.verifySSL || false,
+      );
+
+      if (accounts.length > 0) {
+        this.log.info(`📞 Found ${accounts.length} enabled SIP account(s):`);
+        accounts.forEach((account, index) => {
+          const peer = formatSipPeer(account);
+          const displayName = getSipAccountDisplayName(account);
+          this.log.info(`   ${index + 1}. ${displayName}`);
+          this.log.info(`      SIP Peer: ${peer}`);
+        });
+        this.log.info('💡 Use these SIP peer values in the "Filter Doorbell by Caller" configuration');
+      } else {
+        this.log.warn('⚠️  No enabled SIP accounts found on the intercom');
+      }
+    } catch (error) {
+      this.log.error('❌ Failed to fetch SIP accounts:', error);
+      this.log.warn('You can still manually configure SIP peer filtering');
+    }
   }
 
   /**
@@ -168,7 +203,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         enableDoorbell: this.config.enableDoorbell,
         doorbellEventsUrl: this.config.doorbellEventsUrl,
         doorbellPollingInterval: this.config.doorbellPollingInterval,
-        doorbellFilterPeer: this.config.doorbellFilterPeer === 'custom' ? this.config.doorbellFilterPeerCustom : '',
+        doorbellFilterPeer: this.config.doorbellFilterPeer || '',
         videoQuality: this.config.videoQuality,
         snapshotRefreshInterval: this.config.snapshotRefreshInterval,
         protocol: this.config.protocol,
@@ -191,7 +226,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         enableDoorbell: this.config.enableDoorbell,
         doorbellEventsUrl: this.config.doorbellEventsUrl,
         doorbellPollingInterval: this.config.doorbellPollingInterval,
-        doorbellFilterPeer: this.config.doorbellFilterPeer === 'custom' ? this.config.doorbellFilterPeerCustom : '',
+        doorbellFilterPeer: this.config.doorbellFilterPeer || '',
         videoQuality: this.config.videoQuality,
         snapshotRefreshInterval: this.config.snapshotRefreshInterval,
         protocol: this.config.protocol,

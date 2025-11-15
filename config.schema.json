@@ -60,26 +60,8 @@
         "title": "Filter Doorbell by Caller",
         "type": "string",
         "default": "",
-        "oneOf": [
-          {
-            "title": "All Users (Respond to all calls)",
-            "enum": [""]
-          },
-          {
-            "title": "Specific User (Enter SIP peer manually)",
-            "enum": ["custom"]
-          }
-        ],
-        "description": "Select which users trigger doorbell notifications. Choose 'All Users' to respond to everyone, or 'Specific User' to enter a SIP peer from your intercom's directory. Specific users can be found in the intercom's phone configuration."
-      },
-      "doorbellFilterPeerCustom": {
-        "title": "Specific SIP Peer",
-        "type": "string",
-        "placeholder": "sip:4374834473@proxy.my2n.com:5061",
-        "condition": {
-          "functionBody": "return model.doorbellFilterPeer === 'custom';"
-        },
-        "description": "Enter the SIP peer address for the specific user (e.g., sip:4374834473@proxy.my2n.com:5061). Find this in your intercom's directory or phone config."
+        "placeholder": "Leave empty for all users, or enter SIP peer (e.g., sip:4374834473@proxy.my2n.com:5061)",
+        "description": "Filter which calls trigger doorbell notifications. Leave empty to respond to all calls. To respond to a specific user only, enter their SIP peer address. Available SIP peers are logged when the plugin starts - check your Homebridge logs to see the list of users from your intercom's directory."
       },
       "videoQuality": {
         "title": "Video Stream Quality",
@@ -157,7 +139,6 @@
         "doorSwitchNumber",
         "enableDoorbell",
         "doorbellFilterPeer",
-        "doorbellFilterPeerCustom",
         "protocol",
         "verifySSL"
       ]
