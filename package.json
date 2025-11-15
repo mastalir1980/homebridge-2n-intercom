@@ -1,7 +1,7 @@
 {
   "name": "homebridge-2n-intercom",
   "displayName": "Homebridge 2N Intercom",
-  "version": "2.1.0",
+  "version": "2.2.0-dev",
   "description": "Complete Homebridge plugin for 2N intercoms with door control, live video streaming, and doorbell notifications",
   "main": "dist/index.js",
   "scripts": {
