@@ -4,6 +4,62 @@ import https from 'https';
 import { TwoNIntercomPlatform } from './platform';
 import { TwoNStreamingDelegate } from './streamingDelegate';
 
+function buildPeerVariantSet(value?: string | null): Set<string> {
+  const variants = new Set<string>();
+  if (!value) {
+    return variants;
+  }
+
+  let trimmed = value.trim();
+  if (!trimmed) {
+    return variants;
+  }
+
+  variants.add(trimmed);
+
+  if (trimmed.startsWith('sip:')) {
+    trimmed = trimmed.slice(4);
+    variants.add(trimmed);
+  }
+
+  const atSplit = trimmed.split('@');
+  const beforeAt = atSplit[0];
+  if (beforeAt) {
+    variants.add(beforeAt);
+  }
+
+  const slashSplit = beforeAt ? beforeAt.split('/') : [];
+  const beforeSlash = slashSplit[0];
+  if (beforeSlash) {
+    variants.add(beforeSlash);
+  }
+
+  return variants;
+}
+
+function peersMatch(filterPeer: string, callPeer?: string | null, calledNumber?: string | null): boolean {
+  if (!filterPeer) {
+    return true;
+  }
+
+  const filterSet = buildPeerVariantSet(filterPeer);
+  if (filterSet.size === 0) {
+    return false;
+  }
+
+  const callSet = new Set<string>();
+  buildPeerVariantSet(callPeer).forEach(token => callSet.add(token));
+  buildPeerVariantSet(calledNumber).forEach(token => callSet.add(token));
+
+  for (const token of filterSet) {
+    if (callSet.has(token)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * Platform Accessory - door unlock switch and camera
  * An instance of this class is created for each accessory your platform registers
@@ -18,6 +74,7 @@ export class TwoNIntercomAccessory {
   private isPolling = false;
   private pollingInterval?: NodeJS.Timeout;
   private lastCallState = false;
+  private lastPeerWarning?: { peer: string; timestamp: number };
 
   constructor(
     private readonly platform: TwoNIntercomPlatform,
@@ -300,13 +357,25 @@ export class TwoNIntercomAccessory {
             if (session.state === 'ringing') {
               // Check if we should filter by peer
               if (config.doorbellFilterPeer) {
+                this.platform.log.debug('🔍 Filtering calls by directory peer:', config.doorbellFilterPeer);
                 // Check calls within session for matching peer
                 if (session.calls) {
                   for (const call of session.calls) {
-                    if (call.state === 'ringing' && call.peer && call.peer.includes(config.doorbellFilterPeer)) {
-                      isCallActive = true;
-                      this.platform.log.debug('Doorbell triggered by matching peer:', call.peer);
-                      break;
+                    this.platform.log.debug('📞 Checking call - State:', call.state, 'Peer:', call.peer);
+                    if (call.state === 'ringing' && call.peer) {
+                      // Extract the called number from SIP URI (e.g., "sip:4374834473@..." -> "4374834473")
+                      const calledMatch = call.peer.match(/sip:([^@]+)@/);
+                      const calledNumber = calledMatch ? calledMatch[1] : null;
+                      
+                      // Check if the called number matches configured directory peer
+                      const peerMatches = peersMatch(config.doorbellFilterPeer, call.peer, calledNumber);
+                      this.platform.log.debug('🔎 Peer matching - Config:', config.doorbellFilterPeer, 'Called number:', calledNumber, 'Full peer:', call.peer, 'Matches:', peerMatches);
+                      if (peerMatches) {
+                        isCallActive = true;
+                        this.platform.log.info('✅ Doorbell triggered by matching directory peer:', config.doorbellFilterPeer, 'from call:', call.peer);
+                        this.lastPeerWarning = undefined;
+                        break;
+                      }
                     }
                   }
                 }
@@ -322,10 +391,22 @@ export class TwoNIntercomAccessory {
                 if (call.state === 'ringing') {
                   // Check if we should filter by peer
                   if (config.doorbellFilterPeer) {
-                    if (call.peer && call.peer.includes(config.doorbellFilterPeer)) {
-                      isCallActive = true;
-                      this.platform.log.debug('Doorbell triggered by matching peer:', call.peer);
-                      break;
+                    this.platform.log.debug('🔍 Individual call filtering by directory peer:', config.doorbellFilterPeer);
+                    this.platform.log.debug('📞 Individual call - Peer:', call.peer);
+                    if (call.peer) {
+                      // Extract the called number from SIP URI (e.g., "sip:4374834473@..." -> "4374834473")
+                      const calledMatch = call.peer.match(/sip:([^@]+)@/);
+                      const calledNumber = calledMatch ? calledMatch[1] : null;
+                      
+                      // Check if the called number matches configured directory peer
+                      const peerMatches = peersMatch(config.doorbellFilterPeer, call.peer, calledNumber);
+                      this.platform.log.debug('🔎 Individual peer matching - Config:', config.doorbellFilterPeer, 'Called number:', calledNumber, 'Full peer:', call.peer, 'Matches:', peerMatches);
+                      if (peerMatches) {
+                        isCallActive = true;
+                        this.platform.log.info('✅ Doorbell triggered by matching individual directory peer:', config.doorbellFilterPeer, 'from call:', call.peer);
+                        this.lastPeerWarning = undefined;
+                        break;
+                      }
                     }
                   } else {
                     // No filter configured, accept any ringing call
@@ -335,6 +416,39 @@ export class TwoNIntercomAccessory {
                 }
               }
             }
+          }
+        }
+        
+        // Log summary if peer filtering is active but no match found
+        if (!isCallActive && config.doorbellFilterPeer) {
+          const now = Date.now();
+          const shouldWarn = !this.lastPeerWarning ||
+            this.lastPeerWarning.peer !== config.doorbellFilterPeer ||
+            (now - this.lastPeerWarning.timestamp) > 15000;
+          if (shouldWarn) {
+            this.platform.log.warn('❌ No matching directory peer found for filter:', config.doorbellFilterPeer);
+            this.platform.log.warn('📞 Current incoming call details:');
+            if (response.data.result && response.data.result.sessions) {
+              for (const session of response.data.result.sessions) {
+                if (session.calls) {
+                  session.calls.forEach((call: any) => {
+                    if (call.peer) {
+                      const calledMatch = call.peer.match(/sip:([^@]+)@/);
+                      const calledNumber = calledMatch ? calledMatch[1] : 'unknown';
+                      this.platform.log.warn(`   - Called number: ${calledNumber} (from ${call.peer})`);
+                    }
+                  });
+                }
+              }
+            }
+            // Show available directory peers for comparison
+            if (config.directoryPeers && config.directoryPeers.length > 0) {
+              this.platform.log.warn('📋 Available directory button peers (check plugin startup logs for details):');
+              config.directoryPeers.forEach((peer: any, index: number) => {
+                this.platform.log.warn(`   ${index + 1}. ${peer.peer} (${peer.name})`);
+              });
+            }
+            this.lastPeerWarning = { peer: config.doorbellFilterPeer, timestamp: now };
           }
         }
         
@@ -351,7 +465,6 @@ export class TwoNIntercomAccessory {
 
       // Trigger doorbell on state change from false to true
       if (isCallActive && !this.lastCallState) {
-        this.platform.log.info('🔔 Doorbell button pressed!');
         this.triggerDoorbellEvent();
       }
       

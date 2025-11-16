@@ -2,6 +2,7 @@
   "pluginAlias": "2NIntercom",
   "pluginType": "platform",
   "singular": true,
+  "dynamicSchemaVersion": 1,
   "headerDisplay": "Homebridge 2N Intercom Plugin - Complete solution for 2N intercoms with door control, video streaming, and doorbell notifications",
   "footerDisplay": "For help and support visit: [GitHub Repository](https://github.com/mastalir1980/homebridge-2n-intercom)",
   "schema": {
@@ -57,11 +58,11 @@
         "description": "Enable doorbell button press notifications in HomeKit"
       },
       "doorbellFilterPeer": {
-        "title": "Filter Doorbell by Caller",
+        "title": "Doorbell Filter by Phone Number",
         "type": "string",
         "default": "",
-        "placeholder": "Leave empty for all users, or enter SIP peer (e.g., sip:4374834473@proxy.my2n.com:5061)",
-        "description": "Filter which calls trigger doorbell notifications. Leave empty to respond to all calls. To respond to a specific user only, enter their SIP peer address. Available SIP peers are logged when the plugin starts - check your Homebridge logs to see the list of users from your intercom's directory."
+        "placeholder": "Leave empty for all calls, or enter phone number like: 4374834473/2",
+        "description": "Choose which phone number should trigger doorbell notifications. Leave empty to respond to ALL calls, or enter a specific phone number from the startup logs (e.g., '4374834473/2'). Available phone numbers are logged when the plugin starts - check your Homebridge logs."
       },
       "videoQuality": {
         "title": "Video Stream Quality",

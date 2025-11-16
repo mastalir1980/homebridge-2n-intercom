@@ -1,5 +1,5 @@
 import { API } from 'homebridge';
-import { fetchSipAccounts, formatSipPeer, getSipAccountDisplayName } from './schemaService';
+import { fetchSipAccounts, formatSipPeer, getSipAccountDisplayName, fetchDirectoryPeers } from './schemaService';
 
 /**
  * This class provides custom endpoints for the Homebridge Config UI
@@ -22,29 +22,27 @@ export class ConfigUIServer {
   }
 
   /**
-   * Endpoint to fetch SIP accounts
+   * Endpoint to fetch directory peers for dynamic UI
    * This can be called by custom UI elements
    */
-  static async getSipAccountsEndpoint(
+  static async getDirectoryPeersEndpoint(
     host: string,
     user: string,
     pass: string,
     protocol: string = 'https',
     verifySSL: boolean = false,
   ): Promise<Array<{ value: string; label: string }>> {
-    const accounts = await fetchSipAccounts(host, user, pass, protocol, verifySSL);
+    const peers = await fetchDirectoryPeers(host, user, pass, protocol, verifySSL);
     
     const options = [
-      { value: '', label: 'All Users (Respond to all calls)' },
+      { value: '', label: '📞 All phone numbers - Ring for any incoming call' },
     ];
 
-    accounts.forEach(account => {
-      const peer = formatSipPeer(account);
-      const label = getSipAccountDisplayName(account);
-      options.push({ value: peer, label });
+    peers.forEach(peer => {
+      const phoneNumber = peer.peer.split('/')[0];
+      const label = `📱 ${phoneNumber} - ${peer.name}`;
+      options.push({ value: peer.peer, label });
     });
-
-    options.push({ value: 'custom', label: 'Custom SIP Peer (Manual Entry)' });
 
     return options;
   }

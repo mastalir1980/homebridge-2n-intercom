@@ -7,10 +7,12 @@ import {
   Service,
   Characteristic,
 } from 'homebridge';
+import path from 'path';
 
 import { PLATFORM_NAME, PLUGIN_NAME, TwoNIntercomConfig } from './settings';
 import { TwoNIntercomAccessory } from './accessory';
-import { fetchSipAccounts, formatSipPeer, getSipAccountDisplayName } from './schemaService';
+import { fetchDirectoryPeers } from './schemaService';
+import { writeDynamicSchema } from './schemaGenerator';
 
 /**
  * HomebridgePlatform
@@ -23,6 +25,8 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
 
   // this is used to track restored cached accessories
   public readonly accessories: PlatformAccessory[] = [];
+  // Cached directory peers (button peers)
+  public directoryPeers: Array<{ name: string; peer: string }> = [];
 
   constructor(
     public readonly log: Logger,
@@ -66,43 +70,48 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
   }
 
   /**
-   * Fetch and log available SIP accounts from the intercom
+   * Fetch and log available SIP accounts and directory peers from the intercom
    */
   private async fetchAndLogSipAccounts(): Promise<void> {
     try {
-      this.log.info('🔍 Fetching SIP accounts from intercom...');
-      this.log.debug('========== SIP Account Discovery Debug Start ==========');
+      this.log.info('🔍 Fetching directory and SIP accounts from intercom...');
       
-      const accounts = await fetchSipAccounts(
+      // Fetch directory peers (button peers)
+      this.log.debug('========== Directory Discovery Debug Start ==========');
+      this.directoryPeers = await fetchDirectoryPeers(
         this.config.host,
         this.config.user,
         this.config.pass,
         this.config.protocol || 'https',
         this.config.verifySSL || false,
-        this.log, // Pass logger for debug output
+        this.log,
       );
-
-      this.log.debug('========== SIP Account Discovery Debug End ==========');
-
-      if (accounts.length > 0) {
-        this.log.info(`📞 Found ${accounts.length} enabled SIP account(s):`);
-        accounts.forEach((account, index) => {
-          const peer = formatSipPeer(account);
-          const displayName = getSipAccountDisplayName(account);
-          this.log.info(`   ${index + 1}. ${displayName}`);
-          this.log.info(`      SIP Peer: ${peer}`);
+      this.log.debug('========== Directory Discovery Debug End ==========');
+      
+      if (this.directoryPeers.length > 0) {
+        this.log.info(`📞 Found ${this.directoryPeers.length} phone number(s) in directory:`);
+        this.directoryPeers.forEach((button, index) => {
+          // Extract just the phone number from peer (e.g., "4374834473/2" -> "4374834473")
+          const phoneNumber = button.peer.split('/')[0];
+          this.log.info(`   ${index + 1}. ${phoneNumber} (${button.name})`);
         });
-        this.log.info('💡 Use these SIP peer values in the "Filter Doorbell by Caller" configuration');
+        this.log.info('💡 These numbers are available in the doorbell filter configuration');
+      }
+      await this.updateDynamicSchema();
+      
+
+      
+      if (this.directoryPeers.length > 0) {
+        this.log.info('💡 Use directory button peer values in the "Filter Doorbell by Caller" configuration');
       } else {
-        this.log.warn('⚠️  No enabled SIP accounts found on the intercom');
+        this.log.warn('⚠️  No directory buttons found on the intercom');
         this.log.warn('    Check that:');
-        this.log.warn('    1. At least one SIP account is enabled in the intercom');
-        this.log.warn('    2. The intercom is accessible at: ' + this.config.protocol + '://' + this.config.host);
-        this.log.warn('    3. Authentication credentials are correct');
+        this.log.warn('    1. Directory is configured with buttons in the intercom');
+        this.log.warn('    2. Your credentials have access to the directory');
       }
     } catch (error) {
-      this.log.error('❌ Failed to fetch SIP accounts:', error);
-      this.log.warn('You can still manually configure SIP peer filtering');
+      this.log.error('❌ Failed to fetch directory/SIP data:', error);
+      this.log.warn('You can still manually configure peer filtering');
     }
   }
 
@@ -212,6 +221,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorbellEventsUrl: this.config.doorbellEventsUrl,
         doorbellPollingInterval: this.config.doorbellPollingInterval,
         doorbellFilterPeer: this.config.doorbellFilterPeer || '',
+        directoryPeers: this.directoryPeers,
         videoQuality: this.config.videoQuality,
         snapshotRefreshInterval: this.config.snapshotRefreshInterval,
         protocol: this.config.protocol,
@@ -235,6 +245,7 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
         doorbellEventsUrl: this.config.doorbellEventsUrl,
         doorbellPollingInterval: this.config.doorbellPollingInterval,
         doorbellFilterPeer: this.config.doorbellFilterPeer || '',
+        directoryPeers: this.directoryPeers,
         videoQuality: this.config.videoQuality,
         snapshotRefreshInterval: this.config.snapshotRefreshInterval,
         protocol: this.config.protocol,
@@ -243,6 +254,22 @@ export class TwoNIntercomPlatform implements DynamicPlatformPlugin {
 
       new TwoNIntercomAccessory(this, cameraAccessory);
       this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [cameraAccessory]);
+    }
+  }
+
+  private async updateDynamicSchema(): Promise<void> {
+    try {
+      const baseSchemaPath = path.resolve(__dirname, '..', 'config.schema.json');
+      const storagePath = this.api.user.storagePath();
+
+      await writeDynamicSchema({
+        baseSchemaPath,
+        storagePath,
+        peers: this.directoryPeers,
+        log: this.log,
+      });
+    } catch (error) {
+      this.log.warn('⚠️  Unable to update dynamic config schema:', error);
     }
   }
 }
