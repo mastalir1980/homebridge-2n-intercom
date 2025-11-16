@@ -3,305 +3,152 @@
 [![npm version](https://badge.fury.io/js/homebridge-2n-intercom.svg)](https://badge.fury.io/js/homebridge-2n-intercom)
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 
-Complete Homebridge plugin for 2N intercoms with door control, live video streaming, and doorbell notifications.
-
-## Features
-
-- 🚪 **Door Control Switch** - Open doors remotely with auto-off timer
-- 📹 **Live Video Streaming** - View camera feed in HomeKit with H.264 support  
-- 📸 **Smart Camera Snapshots** - Instant images with caching to prevent black screens
-- 🔔 **Doorbell Notifications** - HomeKit notifications when someone presses the button
-- 🔒 **SSL/HTTPS Support** - Secure communication with configurable certificate handling
-- 🏠 **Home Pod Integration** - Doorbell chimes play through Home Pod
-- ⚙️ **Easy Web Configuration** - Complete setup via Homebridge UI
-- 🔄 **Automatic Discovery** - Creates separate accessories for better HomeKit compatibility
+Complete Homebridge integration for 2N intercoms. The plugin exposes a HomeKit door switch, camera stream, snapshots, and optional doorbell events. This README focuses on two things only: every plugin parameter and the exact settings you must apply on the intercom for the plugin to work reliably.
 
 ## Installation
 
-### Via Homebridge Config UI X (Recommended)
-1. Open Homebridge Config UI X
-2. Go to **Plugins** tab
-3. Search for `homebridge-2n-intercom`
-4. Click **Install**
-5. **Configure via web UI** - No manual JSON editing needed! 🎉
-
-### Manual Installation
 ```bash
 npm install -g homebridge-2n-intercom
 ```
 
-## Quick Setup (v2.1.0+)
+> Tip: Installing through Homebridge Config UI X automatically exposes a guided form. No manual JSON editing is required unless you prefer it.
 
-### Web Configuration Interface ✨
-Starting with v2.0.0, configuration is **dramatically simplified**:
+---
 
-1. **Install the plugin** via Homebridge UI
-2. **Add platform** using the web form:
-   - **Device Name**: `My 2N Intercom`
-   - **IP Address**: `192.168.1.100`
-   - **Username**: `admin`
-   - **Password**: `password`
-   - **Door Switch**: `1` (relay 1-4)
-   - **Enable Doorbell**: `Yes`
-   - **Video Quality**: `VGA (Recommended)`
-   - **Protocol**: `HTTPS (Recommended)` 🔒
-   - **SSL Verification**: `Disabled (for self-signed certs)`
+## Plugin Parameters
 
-**That's it!** All URLs are auto-generated with secure HTTPS by default! 🚀
+Everything in the UI is just a friendlier wrapper around the JSON keys below. URLs for switches, snapshots, doorbell events, and RTSP are generated automatically from these values—no need to paste raw endpoints anymore.
 
-## Required 2N Intercom Configuration
+### Parameter Overview
 
-Before adding the plugin, make sure your 2N device exposes the endpoints the plugin uses:
+| JSON key | UI label | Purpose | Typical value |
+| --- | --- | --- | --- |
+| `name` | Platform Name | Friendly name shown in Homebridge / HomeKit. | `"Front Gate"` |
+| `host` | 2N Intercom IP Address | Host (IPv4 or `IP:port`) used for every API call. | `"192.168.1.100"` |
+| `user` | Username | Service account with HTTP API rights. | `"homebridge"` |
+| `pass` | Password | Password for the service account. | `"changeMe"` |
+| `protocol` | Connection Protocol | `https` (default) or `http`. Controls generated URLs. | `"https"` |
+| `verifySSL` | Verify SSL Certificates | Toggle TLS verification. Leave `false` for the factory self-signed cert. | `false` |
+| `doorSwitchNumber` | Door Relay Number | Which relay (1‑4) is triggered when the HomeKit switch is toggled. | `1` |
+| `enableDoorbell` | Enable Doorbell Notifications | Turn on/off the doorbell service inside the camera accessory. | `true` |
+| `doorbellFilterPeer` | Doorbell Filter by Phone Number | Limits notifications to a single directory peer. Empty = all callers. | `""` |
+| `videoQuality` | Video Stream Quality | `vga` (640×480@15fps) or `hd` (Apple default). | `"vga"` |
+| `snapshotRefreshInterval` | Snapshot Refresh Interval | Seconds between cached snapshots (10‑300). | `30` |
 
-1. **Enable HTTP API**: In the 2N web UI go to *Services → HTTP API* and enable it for the profile used by your Homebridge credentials. Allow the following endpoints: `/api/dir/query`, `/api/call/status`, `/api/switch/ctrl`, `/api/camera/snapshot`.
-2. **Door Relay**: Under *Hardware → Switches* confirm the relay number (1-4) you plan to control and that it is allowed for your HTTP API profile.
-3. **Video / RTSP**: Enable RTSP streaming (*Services → Streaming*) and verify the `h264_stream` profile works in VLC using `rtsp://user:pass@IP:554/h264_stream`.
-4. **Directory Buttons**: Create directory entries and assign them to physical buttons (or virtual keypad positions). The plugin reads these via `/api/dir/query` and turns them into the dropdown list in the Homebridge UI. Whatever number the directory entry dials is what you will see in the `Doorbell Filter by Phone Number` selector.
-5. **Credentials**: The Homebridge user must have permission to read the directory, call status and control the switch. Test by calling the endpoints in a browser (you should get JSON, not an authentication error).
-6. **Self-signed HTTPS**: If your intercom uses the default certificate, leave `Verify SSL` disabled. To require verification, upload a valid certificate on the 2N device first.
+### Basic Connectivity
 
-After these steps, restart Homebridge. When the plugin logs the list of discovered phone numbers (📞 log lines), they will also appear automatically in the Homebridge UI dropdown.
+- `host`, `protocol`, and `verifySSL` decide every URL the plugin generates: door control (`/api/switch/ctrl`), snapshots (`/api/camera/snapshot`), call status (`/api/call/status`), and RTSP (`rtsp://host:554/h264_stream`). Use HTTPS wherever possible; disable `verifySSL` unless you uploaded a trusted certificate to the intercom.
+- `user` / `pass` should belong to a **dedicated HTTP API user**. The account only needs the permissions referenced in the intercom setup section below.
+- `name` identifies the platform in Homebridge logs and becomes the accessory label in HomeKit.
 
-### Legacy Manual Configuration (v1.x)
-For advanced users or legacy setups:
+### Door / Doorbell Behavior
+
+- `doorSwitchNumber` must match the relay you wired to the lock. If you change the relay assignment on the intercom later, update this value so the generated `/api/switch/ctrl?switch=X&action=trigger` keeps working.
+- `enableDoorbell` toggles whether the camera accessory exposes the HomeKit doorbell service. Set it to `false` if you only want the switch + camera but no notifications.
+- `doorbellFilterPeer` uses the list of directory entries returned by `/api/dir/query`. On startup the plugin logs every peer it found and injects them into the Homebridge UI dropdown. Leave the field empty (or choose “All callers”) to react to every press. To restrict notifications, select one of the discovered peers or type the exact SIP/number manually (e.g. `4374834473/2` or `sip:4374830182@proxy.my2n.com:5061`).
+
+### Video and Snapshots
+
+- `videoQuality` swaps the FFmpeg profile definition. `vga` launches quickly and uses less bandwidth. `hd` matches Apple’s default 1280×720@24fps but stresses the intercom CPU more.
+- `snapshotRefreshInterval` prevents black screens by caching snapshots for the given duration. Lower values refresh more often but call `/api/camera/snapshot` more frequently.
+
+### Advanced / Legacy Keys
+
+Keys such as `doorOpenUrl`, `snapshotUrl`, `streamUrl`, and `doorbellEventsUrl` still work for legacy JSON setups, but they are **generated automatically** when you use the web form. You normally never need to set them manually unless you are debugging a custom firmware.
+
+### Minimal JSON Example
 
 ```json
 {
   "platforms": [
     {
       "platform": "2NIntercom",
-      "name": "2N Intercom",
-      "host": "192.168.1.100", 
-      "user": "admin",
-      "pass": "password",
+      "name": "Front Gate",
+      "host": "192.168.1.100",
+      "user": "homebridge",
+      "pass": "changeMe",
       "doorSwitchNumber": 1,
       "enableDoorbell": true,
-      "videoQuality": "vga"
+      "doorbellFilterPeer": "",
+      "videoQuality": "vga",
+      "snapshotRefreshInterval": 30,
+      "protocol": "https",
+      "verifySSL": false
     }
   ]
 }
 ```
 
-## Configuration Parameters
+---
 
-### Web UI Parameters (v2.0.0+)
-All URLs are **auto-generated** from these simple settings:
+## 2N Intercom Configuration
 
-| Parameter | Required | Default | Description |
-|-----------|----------|---------|-------------|
-| `name` | Yes | - | Display name for your intercom |
-| `host` | Yes | - | IP address of your 2N intercom |
-| `user` | Yes | - | Username for intercom authentication |
-| `pass` | Yes | - | Password for intercom authentication |
-| `doorSwitchNumber` | No | `1` | Which relay controls door (1-4) |
-| `enableDoorbell` | No | `true` | Enable doorbell notifications |
-| `doorbellFilterPeer` | No | `""` | Filter doorbell by caller (see below) |
-| `videoQuality` | No | `vga` | Stream quality: `vga` or `hd` |
-| `snapshotRefreshInterval` | No | `30` | Snapshot refresh rate (10-300s) |
-| `protocol` | No | `https` | Connection protocol: `https` or `http` 🔒 |
-| `verifySSL` | No | `false` | Verify SSL certificates (disable for self-signed) |
+The plugin cannot fix a misconfigured device. Use the checklist below to guarantee that every required endpoint is reachable.
 
-### Filtering Doorbell by Caller (v2.1.0+)
+### 1. Create a Service Account with HTTP API Access
 
-You can choose to respond to **all calls** or only **specific users** from your intercom's directory.
+1. Sign in to the 2N web UI as an administrator.
+2. Go to **Services → HTTP API** and enable the service.
+3. Create (or reuse) a user and grant the HTTP API profile the following scopes:
+   - `/api/dir/query` – directory/peer enumeration for the doorbell filter dropdown.
+   - `/api/call/status` – button press detection.
+   - `/api/switch/ctrl` – relay trigger for the lock.
+   - `/api/camera/snapshot` – still images for HomeKit snapshots.
+4. Save and verify the account by opening `https://IP/api/call/status` in a browser (log in when prompted). You should see JSON, not an error page.
 
-**How It Works:**
-1. When the plugin starts, it automatically fetches the list of directory button peers from `/api/dir/query`.
-2. Available callers are logged in Homebridge and written into the dynamic schema so the Config UI dropdown shows real phone numbers (requires Homebridge Config UI X ≥ 4.8.1).
-3. Pick **All callers** or select a single entry from the dropdown to restrict notifications.
+### 2. Map the Door Relay You Want to Control
 
-**Configuration:**
-- Leave the field **empty** (or pick *All callers*) to ring for everyone.
-- Select a specific phone number from the dropdown to ring only when that directory entry is called.
-- Advanced: manually type a value (e.g. `sip:4374830182@proxy.my2n.com:5061` or `4374830182/2`) if you want to filter by a peer that is not part of the dropdown.
+1. Navigate to **Hardware → Switches**.
+2. Confirm which relay (1‑4) is wired to your strike/lock and allowed for the HTTP API profile.
+3. Match that number with `doorSwitchNumber` in the plugin configuration. The plugin will then call `/api/switch/ctrl?switch=<number>&action=trigger` whenever the HomeKit switch is toggled.
 
-**Finding Your SIP Peers:**
-On every restart the plugin prints the list of available directory peers, e.g.:
-```
-📞 Found 3 phone number(s) in directory:
-  1. 4374834473 (Main Entrance)
-  2. 4374834474 (Side Gate)
-  3. 4374834475 (Delivery)
-💡 These numbers are available in the doorbell filter configuration
-```
+### 3. Prepare Directory Entries for Doorbell Filtering
 
-#### **Example Configuration - All Users**
-```json
-{
-  "platform": "2NIntercom",
-  "enableDoorbell": true,
-  "doorbellFilterPeer": ""
-}
-```
+1. Under **Directory → Users / Buttons** create entries for every physical button or virtual keypad position.
+2. Assign the entries to the buttons so that pressing the hardware button always places a call to the intended peer.
+3. Restart the plugin and check the Homebridge logs. You will see lines such as `📞 Found 3 phone number(s) in directory ...`. These peers populate the `doorbellFilterPeer` dropdown. If nothing is listed, the directory is either empty or your HTTP API profile cannot read it.
 
-#### **Example Configuration - Specific User**
-```json
-{
-  "platform": "2NIntercom",
-  "enableDoorbell": true,
-  "doorbellFilterPeer": "sip:4374830182@proxy.my2n.com:5061"
-}
-```
+### 4. Enable Video Streaming
 
-### Legacy Manual Parameters (v1.x)
-For backward compatibility and advanced setups:
+1. Open **Services → Streaming**.
+2. Ensure the `h264_stream` profile (or any H.264 stream) is enabled.
+3. Test the stream in VLC: `rtsp://user:pass@IP:554/h264_stream`. If the stream does not start, verify the codec is H.264 and that port 554 is reachable from the Homebridge host.
+4. Optional: create a lower-resolution secondary stream and set `videoQuality` to `vga` for faster response.
 
-| Parameter | Required | Default | Description |
-|-----------|----------|---------|-------------|
-| `doorOpenUrl` | Yes | - | HTTP API endpoint to open the door |
-| `snapshotUrl` | No | - | HTTP API endpoint for camera snapshots |
-| `streamUrl` | No | - | RTSP URL for live video streaming |
-| `doorbellEventsUrl` | No | - | HTTP API endpoint for doorbell events |
-| `doorbellPollingInterval` | No | `2000` | Doorbell polling frequency (ms) |
+### 5. Verify Snapshot Capability
 
-## 🔒 SSL/HTTPS Configuration (v2.1.0+)
+1. Visit `https://IP/api/camera/snapshot` while logged in as the service account.
+2. You should receive a JPEG. If the browser prompts you to download XML/HTML, the account lacks permission.
+3. The plugin appends size hints automatically; no additional tuning is required.
 
-### Secure by Default
-- **HTTPS is enabled by default** for all new installations
-- **SSL certificate verification disabled by default** (most 2N intercoms use self-signed certificates)
-- **Automatic protocol detection** based on your configuration
+### 6. Decide on HTTPS vs HTTP
 
-### SSL Configuration Options
+1. Under **System → Maintenance → Certificates** (exact menu differs per model) upload a trusted certificate if you want to keep `verifySSL: true`.
+2. If you keep the factory self-signed certificate, leave `verifySSL` disabled in the plugin. The data path still runs over HTTPS; only certificate validation is skipped.
+3. For older devices that do not support HTTPS, switch the plugin `protocol` to `http` and ensure your network is trusted.
 
-#### **HTTPS (Recommended)**
-```json
-{
-  "protocol": "https",
-  "verifySSL": false,  // Recommended for 2N intercoms
-  "host": "192.168.1.100"
-}
-```
+### 7. Final Checklist and Testing
 
-#### **HTTP (Legacy/Unsecure)**
-```json
-{
-  "protocol": "http",
-  "host": "192.168.1.100"
-}
-```
+- **Connectivity**: From your Homebridge server run:
 
-#### **Custom HTTPS Port**
-```json
-{
-  "protocol": "https",
-  "host": "192.168.1.100:8443",
-  "verifySSL": false
-}
-```
+  ```bash
+  curl -u user:pass https://IP/api/call/status
+  curl -u user:pass https://IP/api/dir/query
+  curl -u user:pass "https://IP/api/switch/ctrl?switch=1&action=trigger"
+  ```
 
-### SSL Certificate Handling
-- **Most 2N intercoms use self-signed certificates** → Set `verifySSL: false`
-- **Enterprise setups with proper certificates** → Set `verifySSL: true`  
-- **Mixed environments** → Configure per device in web UI
+  Each command should return JSON (or trigger the relay) without HTTP errors.
 
-## What You Get
+- **Doorbell Logging**: Press the hardware button and confirm the Homebridge log prints `🔔 Doorbell button pressed!`. If it does not, re-check directory permissions and the `call/status` endpoint.
+- **Directory Sync**: After the first successful startup, open the Homebridge Config UI form again—the doorbell filter dropdown should show the peers detected above.
+- **HomeKit Test**: Open the Home app camera tile and verify you can request snapshots and open the RTSP feed. Toggle the switch accessory to ensure the correct relay fires.
 
-When configured, this plugin creates up to **two separate HomeKit accessories**:
+---
 
-### 1. **Door Switch** (`2N Intercom Switch`)
-- Toggle to open/unlock the door
-- Automatically turns off after configured duration
-- Works in HomeKit automations and scenes
+## Need Help?
 
-### 2. **Security Camera** (`2N Intercom Camera`) 
-- Live video streaming with audio
-- Snapshot support with dynamic resizing
-- Optional doorbell functionality with notifications
-
-## API Endpoints Guide
-
-### Door Control URLs
-Test these URLs in your browser to find the right one:
-- `http://IP/api/switch/ctrl?switch=1&action=trigger` 
-
-### Camera Snapshot URLs
-Plugin automatically adds width/height parameters:
-- `http://IP/api/camera/snapshot`
-
-### RTSP Stream URLs
-- `rtsp://IP:554/h264_stream` 
-
-### Doorbell Event URLs
-For button press detection:
-- `http://IP/api/call/status` 
-
-## Supported 2N Models
-
-Tested and confirmed working:
-
-| Model | Door Control | Camera | Streaming | Doorbell |
-|-------|--------------|--------|-----------|----------|
-| 2N IP Verso | ✅ | ✅ | ✅ | ✅ |
-| 2N IP Force | ✅ | ✅ | ✅ | ✅ |
-| 2N IP Style | ✅ | ✅ | ✅ | ✅ |
-| 2N IP Solo | ✅ | ✅ | ✅ | ✅ |
-
-## Doorbell Setup
-
-When someone presses your intercom button:
-1. 🔔 **Home Pod plays doorbell chime**
-2. 📱 **iPhone/Apple Watch gets notification**
-3. 📹 **Camera stream available immediately**
-4. 🏠 **Can trigger HomeKit automations**
-
-## Troubleshooting
-
-### Door Switch Not Working
-1. Test the `doorOpenUrl` in your web browser
-2. Check credentials are correct (`user`/`pass`)
-3. Verify the door actually opens when accessing URL manually
-4. Try alternative door control URLs
-
-### Camera/Video Issues
-1. Test RTSP URL in VLC media player: `rtsp://user:pass@IP:554/h264_stream`
-2. Ensure intercom has H.264 codec enabled (not MJPEG)
-3. Check network connectivity between Homebridge and intercom
-4. Verify RTSP port 554 is not blocked by firewall
-
-### Doorbell Not Triggering
-1. Test `doorbellEventsUrl` in browser while pressing button
-2. Check if API response changes when button is pressed
-3. Ensure HomeKit notifications are enabled in iOS Settings
-4. Verify Home Pod is set as Home Hub
-
-### Common Issues
-
-**"This accessory is not responding"**
-- Check if intercom IP address is reachable
-- Verify username/password are correct
-- Ensure URLs return valid responses
-
-**Video shows "Loading..." indefinitely**
-- RTSP stream may not be H.264 format
-- Try different RTSP URLs from the list above
-- Check if intercom requires specific codec settings
-
-**Doorbell notifications not received**
-- Enable notifications for Home app in iOS Settings
-- Ensure Home Pod is configured as Home Hub
-- Check if `doorbellEventsUrl` returns different data when pressed
-
-## Requirements
-
-- **Node.js** 18.0.0 or newer
-- **Homebridge** 1.8.0 or newer  
-- **FFmpeg** (automatically installed with plugin)
-- **2N Intercom** with HTTP API enabled
-- **Network access** between Homebridge server and intercom
-
-### Performance Tuning
-For better performance on slower networks:
-- Increase `doorbellPollingInterval` to 3000-5000ms
-- Use lower resolution RTSP streams if available
-- Reduce `switchDuration` to 500ms for faster response
-
-## Contributing
-
-Found a bug or want to contribute? 
-- Report issues on [GitHub](https://github.com/mastalir1980/homebridge-2n-intercom)
-- Submit pull requests with improvements
-- Share your 2N model compatibility results
-
-## License
+- Enable debug logging in Homebridge and attach the log snippet when opening an issue.
+- Use the GitHub issues page if a parameter is unclear or if the plugin fails to read your directory peers.
+- Contributions describing additional 2N models or edge cases are welcome.
 
 MIT © Jan Maštalíř
