@@ -22,6 +22,7 @@ export interface TwoNIntercomConfig {
   // Web-configurable parameters
   doorSwitchNumber?: number; // Which relay to use (1-4), default: 1
   enableDoorbell?: boolean; // Enable doorbell functionality, default: true
+  doorbellFilterPeer?: string; // Doorbell filter by specific directory peer (e.g., "4374834473")
   videoQuality?: 'vga' | 'hd'; // Video stream quality, default: 'vga'
   snapshotRefreshInterval?: number; // Snapshot refresh interval in seconds, default: 10
   protocol?: 'http' | 'https'; // Protocol to use, default: 'https'

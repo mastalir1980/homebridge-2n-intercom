@@ -49,6 +49,19 @@ Starting with v2.0.0, configuration is **dramatically simplified**:
 
 **That's it!** All URLs are auto-generated with secure HTTPS by default! 🚀
 
+## Required 2N Intercom Configuration
+
+Before adding the plugin, make sure your 2N device exposes the endpoints the plugin uses:
+
+1. **Enable HTTP API**: In the 2N web UI go to *Services → HTTP API* and enable it for the profile used by your Homebridge credentials. Allow the following endpoints: `/api/dir/query`, `/api/call/status`, `/api/switch/ctrl`, `/api/camera/snapshot`.
+2. **Door Relay**: Under *Hardware → Switches* confirm the relay number (1-4) you plan to control and that it is allowed for your HTTP API profile.
+3. **Video / RTSP**: Enable RTSP streaming (*Services → Streaming*) and verify the `h264_stream` profile works in VLC using `rtsp://user:pass@IP:554/h264_stream`.
+4. **Directory Buttons**: Create directory entries and assign them to physical buttons (or virtual keypad positions). The plugin reads these via `/api/dir/query` and turns them into the dropdown list in the Homebridge UI. Whatever number the directory entry dials is what you will see in the `Doorbell Filter by Phone Number` selector.
+5. **Credentials**: The Homebridge user must have permission to read the directory, call status and control the switch. Test by calling the endpoints in a browser (you should get JSON, not an authentication error).
+6. **Self-signed HTTPS**: If your intercom uses the default certificate, leave `Verify SSL` disabled. To require verification, upload a valid certificate on the 2N device first.
+
+After these steps, restart Homebridge. When the plugin logs the list of discovered phone numbers (📞 log lines), they will also appear automatically in the Homebridge UI dropdown.
+
 ### Legacy Manual Configuration (v1.x)
 For advanced users or legacy setups:
 
@@ -82,10 +95,53 @@ All URLs are **auto-generated** from these simple settings:
 | `pass` | Yes | - | Password for intercom authentication |
 | `doorSwitchNumber` | No | `1` | Which relay controls door (1-4) |
 | `enableDoorbell` | No | `true` | Enable doorbell notifications |
+| `doorbellFilterPeer` | No | `""` | Filter doorbell by caller (see below) |
 | `videoQuality` | No | `vga` | Stream quality: `vga` or `hd` |
 | `snapshotRefreshInterval` | No | `30` | Snapshot refresh rate (10-300s) |
 | `protocol` | No | `https` | Connection protocol: `https` or `http` 🔒 |
 | `verifySSL` | No | `false` | Verify SSL certificates (disable for self-signed) |
+
+### Filtering Doorbell by Caller (v2.1.0+)
+
+You can choose to respond to **all calls** or only **specific users** from your intercom's directory.
+
+**How It Works:**
+1. When the plugin starts, it automatically fetches the list of directory button peers from `/api/dir/query`.
+2. Available callers are logged in Homebridge and written into the dynamic schema so the Config UI dropdown shows real phone numbers (requires Homebridge Config UI X ≥ 4.8.1).
+3. Pick **All callers** or select a single entry from the dropdown to restrict notifications.
+
+**Configuration:**
+- Leave the field **empty** (or pick *All callers*) to ring for everyone.
+- Select a specific phone number from the dropdown to ring only when that directory entry is called.
+- Advanced: manually type a value (e.g. `sip:4374830182@proxy.my2n.com:5061` or `4374830182/2`) if you want to filter by a peer that is not part of the dropdown.
+
+**Finding Your SIP Peers:**
+On every restart the plugin prints the list of available directory peers, e.g.:
+```
+📞 Found 3 phone number(s) in directory:
+  1. 4374834473 (Main Entrance)
+  2. 4374834474 (Side Gate)
+  3. 4374834475 (Delivery)
+💡 These numbers are available in the doorbell filter configuration
+```
+
+#### **Example Configuration - All Users**
+```json
+{
+  "platform": "2NIntercom",
+  "enableDoorbell": true,
+  "doorbellFilterPeer": ""
+}
+```
+
+#### **Example Configuration - Specific User**
+```json
+{
+  "platform": "2NIntercom",
+  "enableDoorbell": true,
+  "doorbellFilterPeer": "sip:4374830182@proxy.my2n.com:5061"
+}
+```
 
 ### Legacy Manual Parameters (v1.x)
 For backward compatibility and advanced setups:
