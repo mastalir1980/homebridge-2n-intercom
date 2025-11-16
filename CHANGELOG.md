@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.2.0] - 2025-11-16
+
+### ✨ Dynamic Doorbell Filtering
+- **Directory-aware dropdown**: Fetches `/api/dir/query` on startup and writes a dynamic Homebridge UI schema so you can select any 2N directory button directly in Config UI X.
+- **Runtime schema publishing**: Generates `.homebridge-2n-intercom(-v1).schema.json` automatically and updates after every restart.
+- **Peer matching improvements**: Normalizes `sip:number@domain`, `number/pos`, and plain digits so filtering works regardless of how the call endpoint reports the peer.
+
+### 🛡️ Reliability & UX
+- **Log noise reduction**: Doorbell warnings are throttled and only repeat when there is a new unmatched call, keeping Homebridge logs readable.
+- **Better diagnostics**: Startup logs list every discovered button along with the exact phone number that will appear in the UI dropdown.
+- **README additions**: Added a “Required 2N Intercom Configuration” guide covering HTTP API permissions, RTSP streaming, and button mapping so new installs succeed on the first try.
+
+### 🧱 Under the Hood
+- Added `schemaGenerator.ts` helper to render the dynamic config files.
+- Simplified configuration interfaces (`settings.ts`) to reflect the single peer field.
+- Cleaned up platform/accessory code to pass directory peers everywhere they’re needed.
+
 ## [2.1.0] - 2025-11-09
 
 ### � Major Features
