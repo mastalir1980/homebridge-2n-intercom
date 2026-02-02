@@ -443,13 +443,7 @@ export class TwoNIntercomAccessory {
                 }
               }
             }
-            // Show available directory peers for comparison
-            if (config.directoryPeers && config.directoryPeers.length > 0) {
-              this.platform.log.warn('📋 Available directory button peers (check plugin startup logs for details):');
-              config.directoryPeers.forEach((peer: any, index: number) => {
-                this.platform.log.warn(`   ${index + 1}. ${peer.peer} (${peer.name})`);
-              });
-            }
+            this.platform.log.warn('💡 Check plugin startup logs for available directory button peers');
             this.lastPeerWarning = { peer: config.doorbellFilterPeer, timestamp: now };
           }
         }
