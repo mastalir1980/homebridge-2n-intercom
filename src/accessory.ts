@@ -349,12 +349,14 @@ export class TwoNIntercomAccessory {
 
       // Different 2N models return different formats
       let isCallActive = false;
+      let hasRingingSession = false; // Track if there's any active ringing call
       
       if (response.data && typeof response.data === 'object') {
         // Handle 2N API format: sessions[].state === "ringing"
         if (response.data.result && response.data.result.sessions) {
           for (const session of response.data.result.sessions) {
             if (session.state === 'ringing') {
+              hasRingingSession = true; // Mark that we have an active ringing session
               // Check if we should filter by peer
               if (config.doorbellFilterPeer) {
                 this.platform.log.debug('🔍 Filtering calls by directory peer:', config.doorbellFilterPeer);
@@ -419,8 +421,8 @@ export class TwoNIntercomAccessory {
           }
         }
         
-        // Log summary if peer filtering is active but no match found
-        if (!isCallActive && config.doorbellFilterPeer) {
+        // Log summary ONLY if there's an active ringing session AND peer filtering is active but no match found
+        if (hasRingingSession && !isCallActive && config.doorbellFilterPeer) {
           const now = Date.now();
           const shouldWarn = !this.lastPeerWarning ||
             this.lastPeerWarning.peer !== config.doorbellFilterPeer ||

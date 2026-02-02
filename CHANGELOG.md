@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.2.1] - 2025-11-16
+## [2.2.3] - 2025-11-16
 
 ### 📝 Documentation
 - Rewrote `README.md` to focus purely on plugin parameters and the exact 2N intercom settings required for reliable operation.
