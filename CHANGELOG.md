@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.4] - 2025-02-02
+
+### 🛡️ Log Optimization
+- **Reduced log clutter**: Removed verbose logging of all available directory peers during active calls
+- **Improved diagnostics**: When a call doesn't match the configured peer filter, the warning now directs users to check the startup logs instead of repeating the full list every 15 seconds
+- **Better user experience**: Essential information is still logged (which call was received), but without excessive repetition
+
 ## [2.2.3] - 2025-11-16
 
 ### 📝 Documentation
